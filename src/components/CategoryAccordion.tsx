@@ -38,13 +38,13 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="h-auto min-h-[72px] w-full justify-between gap-4 rounded-none px-5 py-4 text-left"
+        className="grid h-auto min-h-[72px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-none px-5 py-4 text-left"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         id={`${id}-header`}
       >
-        <div className="flex-1">
-          <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-3">
             {editMode ? (
               <input
                 value={title}
@@ -90,7 +90,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         <img
           src={carrot}
           alt=""
-          className={`h-4 w-4 shrink-0 opacity-70 transition-transform ${
+          className={`mt-1 h-4 w-4 shrink-0 opacity-70 transition-transform ${
             open ? 'rotate-90' : 'rotate-0'
           }`}
           aria-hidden="true"

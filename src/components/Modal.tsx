@@ -1,5 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 
+import AppButton from './AppButton';
+
 type ModalProps = {
   open: boolean;
   onClose: () => void;
@@ -52,13 +54,15 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }
       >
         <div className="flex items-center justify-between">
           <div className="text-xl font-semibold">{title}</div>
-          <button
+          <AppButton
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs focus-ring"
+            className="h-7 rounded-full px-3 text-xs"
           >
             Close
-          </button>
+          </AppButton>
         </div>
         <div className="mt-4 text-sm text-[var(--color-text)]">{children}</div>
         {actions ? <div className="mt-6 flex flex-wrap gap-2">{actions}</div> : null}

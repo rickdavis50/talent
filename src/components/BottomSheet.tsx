@@ -1,5 +1,7 @@
 import React, { useEffect } from 'react';
 
+import AppButton from './AppButton';
+
 type BottomSheetProps = {
   open: boolean;
   onClose: () => void;
@@ -23,13 +25,15 @@ const BottomSheet: React.FC<BottomSheetProps> = ({ open, onClose, title, childre
       <div className="sheet-enter w-full rounded-t-3xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-2xl">
         <div className="flex items-center justify-between">
           <div className="text-lg font-semibold">{title}</div>
-          <button
+          <AppButton
             type="button"
+            variant="outline"
+            size="sm"
             onClick={onClose}
-            className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs focus-ring"
+            className="h-7 rounded-full px-3 text-xs"
           >
             Close
-          </button>
+          </AppButton>
         </div>
         <div className="mt-4 max-h-[70vh] overflow-y-auto pr-1">{children}</div>
       </div>

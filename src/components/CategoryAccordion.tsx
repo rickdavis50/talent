@@ -1,4 +1,6 @@
 import React from 'react';
+
+import AppButton from './AppButton';
 import carrot from '../assets/carrot.svg';
 
 type CategoryAccordionProps = {
@@ -32,10 +34,11 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
 }) => {
   return (
     <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] shadow-sm">
-      <button
+      <AppButton
         type="button"
+        variant="ghost"
         onClick={onToggle}
-        className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left focus-ring min-h-[72px]"
+        className="h-auto min-h-[72px] w-full justify-between gap-4 rounded-none px-5 py-4 text-left"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         id={`${id}-header`}
@@ -92,7 +95,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
             aria-hidden="true"
           />
         </div>
-      </button>
+      </AppButton>
       <div
         id={`${id}-panel`}
         className={`grid transition-all duration-300 motion-reduce:transition-none ${

@@ -1,5 +1,7 @@
 import React from 'react';
 
+import AppButton from './AppButton';
+
 type TopBarProps = {
   onReset: () => void;
   onDownload: () => void;
@@ -22,27 +24,33 @@ const TopBar: React.FC<TopBarProps> = ({
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button
+        <AppButton
           type="button"
+          variant="outline"
+          size="sm"
           onClick={onToggleEdit}
-          className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]/60 focus-ring"
+          className="rounded-full px-4"
         >
           {editMode ? 'Done' : 'Edit'}
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           type="button"
+          variant="outline"
+          size="sm"
           onClick={onReset}
-          className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]/60 focus-ring"
+          className="rounded-full px-4"
         >
           Reset
-        </button>
-        <button
+        </AppButton>
+        <AppButton
           type="button"
+          variant="outline"
+          size="sm"
           onClick={onDownload}
-          className="rounded-full border border-[var(--color-border)] px-4 py-1.5 text-xs font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]/60 focus-ring"
+          className="rounded-full px-4"
         >
           Download PDF
-        </button>
+        </AppButton>
       </div>
     </div>
   );

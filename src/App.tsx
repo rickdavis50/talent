@@ -11,6 +11,7 @@ import TopBar from './components/TopBar';
 import BottomSheet from './components/BottomSheet';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
+import AppButton from './components/AppButton';
 
 const defaultAnswers = categories.reduce<Record<string, number>>((acc, category) => {
   category.questions.forEach((question) => {
@@ -280,21 +281,25 @@ const App = () => {
             </div>
 
             <div className="mt-8 flex flex-wrap gap-3">
-              <button
+              <AppButton
                 type="button"
+                variant="default"
+                size="lg"
                 onClick={() => dispatch({ type: 'SET_STEP', payload: 'assessment' })}
                 disabled={!state.founder.name || !state.founder.company}
-                className="rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-ink-soft)] disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
+                className="rounded-full"
               >
                 Start assessment
-              </button>
-              <button
+              </AppButton>
+              <AppButton
                 type="button"
+                variant="outline"
+                size="lg"
                 onClick={() => dispatch({ type: 'SET_STEP', payload: 'assessment' })}
-                className="rounded-full border border-[var(--color-border)] px-6 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]/50 focus-ring"
+                className="rounded-full"
               >
                 Skip for now
-              </button>
+              </AppButton>
             </div>
           </div>
         </div>
@@ -402,13 +407,14 @@ const App = () => {
             <div className="text-xs text-[var(--color-muted)]">Overall</div>
             <div className="text-xl font-semibold">{summary.overall}</div>
           </div>
-          <button
+          <AppButton
             type="button"
+            variant="default"
             onClick={() => setShowInsights(true)}
-            className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-semibold text-white focus-ring"
+            className="rounded-full"
           >
             View insights
-          </button>
+          </AppButton>
         </div>
       </div>
 
@@ -440,20 +446,24 @@ const App = () => {
         title="Reset assessment"
         actions={
           <>
-            <button
+            <AppButton
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setShowReset(false)}
-              className="rounded-full border border-[var(--color-border)] px-4 py-2 text-xs focus-ring"
+              className="rounded-full px-4"
             >
               Cancel
-            </button>
-            <button
+            </AppButton>
+            <AppButton
               type="button"
+              variant="destructive"
+              size="sm"
               onClick={handleReset}
-              className="rounded-full bg-[var(--color-danger)] px-4 py-2 text-xs font-semibold text-black focus-ring"
+              className="rounded-full px-4"
             >
               Reset now
-            </button>
+            </AppButton>
           </>
         }
       >

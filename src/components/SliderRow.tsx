@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 import AppSlider from './AppSlider';
 
@@ -20,9 +20,6 @@ const SliderRow: React.FC<SliderRowProps> = ({
   editMode,
   onLabelChange,
 }) => {
-  const percent = useMemo(() => ((value - 0) / 5) * 100, [value]);
-  const steps = useMemo(() => Array.from({ length: 6 }, (_, index) => index), []);
-
   return (
     <div className="question-card rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--color-accent)]/40">
       <div className="flex items-start justify-between gap-4">
@@ -44,8 +41,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
         <div className="text-2xl font-semibold text-white">{value}</div>
       </div>
 
-      <div className="range-wrap mt-4" style={{ '--range-fill': `${percent}%` } as React.CSSProperties}>
-        <div className="range-rail" aria-hidden="true" />
+      <div className="mt-4">
         <AppSlider
           id={id}
           value={value}
@@ -56,24 +52,6 @@ const SliderRow: React.FC<SliderRowProps> = ({
           ariaLabel={label}
           className="relative z-10 w-full"
         />
-        <div className="range-steps z-20" aria-hidden="true">
-          {steps.map((step) => (
-            <button
-              key={step}
-              type="button"
-              onClick={() => onChange(step)}
-              className={`range-dot ${
-                step === value
-                  ? 'bg-white'
-                  : step < value
-                    ? 'bg-[var(--range-rail-active)]'
-                    : 'bg-[var(--range-rail)]'
-              }`}
-              aria-label={`Set ${label} to ${step}`}
-              tabIndex={-1}
-            />
-          ))}
-        </div>
       </div>
     </div>
   );

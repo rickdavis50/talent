@@ -19,12 +19,11 @@
   --color-ink-soft: #c10c76;
   --question-row-height: 120px;
   --range-track-height: 4px;
-  --range-dot-size: 18px;
   --range-thumb-size: 18px;
   --range-hit-area: 44px;
   --range-rail: #2c2c2c;
   --range-rail-active: #f5f5f5;
-  --range-edge: calc(var(--range-dot-size) / 2);
+  --range-edge: calc(var(--range-thumb-size) / 2);
 }
 
 * {
@@ -44,54 +43,6 @@ button, input, select, textarea {
   color: inherit;
 }
 
-
-.range-wrap {
-  position: relative;
-  height: var(--range-hit-area);
-}
-
-.range-rail {
-  position: absolute;
-  left: var(--range-edge);
-  right: var(--range-edge);
-  top: 50%;
-  height: var(--range-track-height);
-  transform: translateY(-50%);
-  background: linear-gradient(
-    to right,
-    var(--range-rail-active) 0%,
-    var(--range-rail-active) var(--range-fill, 0%),
-    var(--range-rail) var(--range-fill, 0%),
-    var(--range-rail) 100%
-  );
-  border-radius: 999px;
-  overflow: hidden;
-  z-index: 1;
-}
-
-
-.range-steps {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 var(--range-edge);
-  z-index: 3;
-}
-
-.range-dot {
-  height: var(--range-dot-size);
-  width: var(--range-dot-size);
-  border-radius: 999px;
-  background: var(--range-rail);
-  pointer-events: auto;
-  transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
-  cursor: pointer;
-}
 
 .focus-ring:focus-visible {
   outline: 2px solid var(--color-accent);

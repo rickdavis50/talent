@@ -44,22 +44,32 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         id={`${id}-header`}
       >
         <div className="flex-1">
-          {editMode ? (
-            <input
-              value={title}
-              onChange={(event) => onTitleChange(event.target.value)}
-              className="w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-              aria-label="Edit category title"
-            />
-          ) : (
-            <div
-              className={`font-semibold font-display ${
-                open ? 'text-lg' : 'text-base'
-              }`}
-            >
-              {title}
+          <div className="flex flex-wrap items-center gap-3">
+            {editMode ? (
+              <input
+                value={title}
+                onChange={(event) => onTitleChange(event.target.value)}
+                className="min-w-[180px] flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                aria-label="Edit category title"
+              />
+            ) : (
+              <div
+                className={`font-semibold font-display ${
+                  open ? 'text-lg' : 'text-base'
+                }`}
+              >
+                {title}
+              </div>
+            )}
+            <div className="text-right">
+              <div className="text-xs font-semibold text-[var(--color-text)]">
+                {scoreValue} of {scoreMax}
+              </div>
+              <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                {scorePercent}%
+              </div>
             </div>
-          )}
+          </div>
           {editMode ? (
             <input
               value={description}
@@ -77,24 +87,14 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="text-right">
-            <div className="text-xs font-semibold text-[var(--color-text)]">
-              {scoreValue} of {scoreMax}
-            </div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
-              {scorePercent}%
-            </div>
-          </div>
-          <img
-            src={carrot}
-            alt=""
-            className={`h-4 w-4 shrink-0 opacity-70 transition-transform ${
-              open ? 'rotate-90' : 'rotate-0'
-            }`}
-            aria-hidden="true"
-          />
-        </div>
+        <img
+          src={carrot}
+          alt=""
+          className={`h-4 w-4 shrink-0 opacity-70 transition-transform ${
+            open ? 'rotate-90' : 'rotate-0'
+          }`}
+          aria-hidden="true"
+        />
       </AppButton>
       <div
         id={`${id}-panel`}

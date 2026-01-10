@@ -1,5 +1,7 @@
 import React, { useMemo } from 'react';
 
+import AppSlider from './AppSlider';
+
 type SliderRowProps = {
   id: string;
   label: string;
@@ -44,19 +46,15 @@ const SliderRow: React.FC<SliderRowProps> = ({
 
       <div className="range-wrap mt-4" style={{ '--range-fill': `${percent}%` } as React.CSSProperties}>
         <div className="range-rail" aria-hidden="true" />
-        <input
+        <AppSlider
           id={id}
-          type="range"
+          value={value}
           min={0}
           max={5}
           step={1}
-          value={value}
-          onChange={(event) => onChange(Number(event.target.value))}
+          onChange={(nextValue) => onChange(nextValue as number)}
+          ariaLabel={label}
           className="relative z-10 w-full"
-          aria-label={label}
-          aria-valuemin={0}
-          aria-valuemax={5}
-          aria-valuenow={value}
         />
         <div className="range-steps z-20" aria-hidden="true">
           {steps.map((step) => (

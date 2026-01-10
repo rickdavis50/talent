@@ -1,0 +1,559 @@
+import React, { useEffect, useMemo, useReducer, useState } from 'react';
+import { categories } from './data/questions';
+import { AssessmentState, FounderInfo } from './types';
+import { computeScores } from './lib/scoring';
+import { decodeStateFromQuery } from './lib/share';
+import { clearState, loadState, saveState } from './lib/storage';
+import RadarCanvas from './components/RadarCanvas';
+import SliderRow from './components/SliderRow';
+import CategoryAccordion from './components/CategoryAccordion';
+import TopBar from './components/TopBar';
+import BottomSheet from './components/BottomSheet';
+import Modal from './components/Modal';
+import Toast from './components/Toast';
+
+const defaultAnswers = categories.reduce<Record<string, number>>((acc, category) => {
+  category.questions.forEach((question) => {
+    acc[question.id] = question.defaultValue;
+  });
+  return acc;
+}, {});
+
+const initialState: AssessmentState = {
+  step: 'welcome',
+  founder: {
+    name: '',
+    company: '',
+    assessmentName: '',
+  },
+  answers: defaultAnswers,
+  labels: {},
+  categoryLabels: {},
+  categoryDescriptions: {},
+  editMode: false,
+};
+
+type Action =
+  | { type: 'SET_FOUNDER'; payload: Partial<FounderInfo> }
+  | { type: 'SET_STEP'; payload: AssessmentState['step'] }
+  | { type: 'SET_ANSWER'; payload: { id: string; value: number } }
+  | { type: 'SET_LABEL'; payload: { id: string; value: string } }
+  | { type: 'SET_CATEGORY_LABEL'; payload: { id: string; value: string } }
+  | { type: 'SET_CATEGORY_DESCRIPTION'; payload: { id: string; value: string } }
+  | { type: 'TOGGLE_EDIT' }
+  | { type: 'RESET'; payload: { keepLabels: boolean } }
+  | { type: 'HYDRATE'; payload: Partial<AssessmentState> };
+
+const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+
+const reducer = (state: AssessmentState, action: Action): AssessmentState => {
+  switch (action.type) {
+    case 'SET_FOUNDER':
+      return { ...state, founder: { ...state.founder, ...action.payload } };
+    case 'SET_STEP':
+      return { ...state, step: action.payload };
+    case 'SET_ANSWER':
+      return {
+        ...state,
+        answers: { ...state.answers, [action.payload.id]: action.payload.value },
+      };
+    case 'SET_LABEL':
+      return {
+        ...state,
+        labels: { ...state.labels, [action.payload.id]: action.payload.value },
+      };
+    case 'SET_CATEGORY_LABEL':
+      return {
+        ...state,
+        categoryLabels: { ...state.categoryLabels, [action.payload.id]: action.payload.value },
+      };
+    case 'SET_CATEGORY_DESCRIPTION':
+      return {
+        ...state,
+        categoryDescriptions: { ...state.categoryDescriptions, [action.payload.id]: action.payload.value },
+      };
+    case 'TOGGLE_EDIT':
+      return { ...state, editMode: !state.editMode };
+    case 'RESET': {
+      return {
+        ...state,
+        answers: defaultAnswers,
+        labels: action.payload.keepLabels ? state.labels : {},
+        categoryLabels: action.payload.keepLabels ? state.categoryLabels : {},
+        categoryDescriptions: action.payload.keepLabels ? state.categoryDescriptions : {},
+        editMode: false,
+      };
+    }
+    case 'HYDRATE': {
+      return {
+        ...state,
+        ...action.payload,
+      } as AssessmentState;
+    }
+    default:
+      return state;
+  }
+};
+
+const getLabel = (id: string, fallback: string, labels: Record<string, string>) => {
+  const override = labels[id];
+  return override && override.trim().length > 0 ? override : fallback;
+};
+
+const getCategoryValue = (id: string, fallback: string, overrides: Record<string, string>) => {
+  const override = overrides[id];
+  return override && override.trim().length > 0 ? override : fallback;
+};
+
+const sanitizeIncomingState = (incoming: Partial<AssessmentState>): Partial<AssessmentState> => {
+  const sanitizedAnswers: Record<string, number> = { ...defaultAnswers };
+  if (incoming.answers) {
+    Object.keys(sanitizedAnswers).forEach((key) => {
+      const value = incoming.answers?.[key];
+      if (typeof value === 'number') {
+        sanitizedAnswers[key] = clamp(value, 0, 5);
+      }
+    });
+  }
+
+  const sanitizedLabels: Record<string, string> = {};
+  if (incoming.labels) {
+    Object.entries(incoming.labels).forEach(([key, value]) => {
+      if (typeof value === 'string') sanitizedLabels[key] = value;
+    });
+  }
+
+  const sanitizedCategoryLabels: Record<string, string> = {};
+  if (incoming.categoryLabels) {
+    Object.entries(incoming.categoryLabels).forEach(([key, value]) => {
+      if (typeof value === 'string') sanitizedCategoryLabels[key] = value;
+    });
+  }
+
+  const sanitizedCategoryDescriptions: Record<string, string> = {};
+  if (incoming.categoryDescriptions) {
+    Object.entries(incoming.categoryDescriptions).forEach(([key, value]) => {
+      if (typeof value === 'string') sanitizedCategoryDescriptions[key] = value;
+    });
+  }
+
+  const founder = {
+    name: incoming.founder?.name ?? '',
+    company: incoming.founder?.company ?? '',
+    assessmentName: incoming.founder?.assessmentName ?? '',
+  };
+
+  return {
+    step: 'assessment',
+    founder,
+    answers: sanitizedAnswers,
+    labels: sanitizedLabels,
+    categoryLabels: sanitizedCategoryLabels,
+    categoryDescriptions: sanitizedCategoryDescriptions,
+    editMode: false,
+  };
+};
+
+const App = () => {
+  const [state, dispatch] = useReducer(reducer, initialState);
+  const [openCategories, setOpenCategories] = useState<string[]>(['engineering']);
+  const [toast, setToast] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [keepLabels, setKeepLabels] = useState(true);
+
+  const summary = useMemo(() => computeScores(categories, state.answers), [state.answers]);
+  const categoryStats = useMemo(() => {
+    return categories.reduce<Record<string, { total: number; max: number; percent: number }>>(
+      (acc, category) => {
+        const total = category.questions.reduce((sum, question) => {
+          const value = state.answers[question.id] ?? question.defaultValue;
+          return sum + Math.max(0, Math.min(5, value));
+        }, 0);
+        const max = category.questions.length * 5;
+        const percent = max === 0 ? 0 : Math.round((total / max) * 100);
+        acc[category.id] = { total, max, percent };
+        return acc;
+      },
+      {}
+    );
+  }, [state.answers]);
+  const categoryScoreMap = useMemo(
+    () => new Map(summary.categoryScores.map((score) => [score.id, score.score])),
+    [summary.categoryScores]
+  );
+  const scoreTone = (score: number) =>
+    score <= 59 ? 'text-[var(--color-danger)]' : 'text-[var(--color-accent)]';
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shareValue = params.get('s');
+    if (shareValue) {
+      const decoded = decodeStateFromQuery(shareValue);
+      if (decoded) {
+        dispatch({ type: 'HYDRATE', payload: sanitizeIncomingState(decoded) });
+        return;
+      }
+    }
+
+    const stored = loadState();
+    if (stored) {
+      dispatch({ type: 'HYDRATE', payload: stored });
+    }
+  }, []);
+
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      saveState(state);
+    }, 250);
+    return () => window.clearTimeout(handle);
+  }, [state]);
+
+  useEffect(() => {
+    if (!toast) return;
+    setShowToast(true);
+    const handle = window.setTimeout(() => setShowToast(false), 2000);
+    return () => window.clearTimeout(handle);
+  }, [toast]);
+
+  const toggleCategory = (id: string) => {
+    setOpenCategories((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleDownload = () => {
+    window.print();
+  };
+
+  const handleReset = () => {
+    dispatch({ type: 'RESET', payload: { keepLabels } });
+    clearState();
+    setShowReset(false);
+    setToast('Assessment reset');
+  };
+
+  if (state.step === 'welcome') {
+    return (
+      <div className="min-h-screen px-6 py-12">
+        <div className="mx-auto max-w-3xl animate-fade-up">
+          <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-panel)] p-8 shadow-lg">
+            <div className="text-sm uppercase tracking-[0.3em] text-[var(--color-muted)]">Talent OS</div>
+            <h1 className="mt-4 text-4xl font-semibold font-display">Top Talent Assessment</h1>
+            <p className="mt-3 text-[var(--color-muted)]">
+              Capture your baseline across product, engineering, leadership, go-to-market, and finance.
+            </p>
+
+            <div className="mt-8 grid gap-5">
+              <label className="grid gap-2 text-sm">
+                Founder name
+                <input
+                  value={state.founder.name}
+                  onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { name: event.target.value } })}
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 focus-ring"
+                  placeholder="Alex Rivera"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                Company
+                <input
+                  value={state.founder.company}
+                  onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { company: event.target.value } })}
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 focus-ring"
+                  placeholder="Nova Health"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm">
+                Assessment name (optional)
+                <input
+                  value={state.founder.assessmentName}
+                  onChange={(event) =>
+                    dispatch({ type: 'SET_FOUNDER', payload: { assessmentName: event.target.value } })
+                  }
+                  className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 focus-ring"
+                  placeholder="Seed readiness check"
+                />
+              </label>
+            </div>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'SET_STEP', payload: 'assessment' })}
+                disabled={!state.founder.name || !state.founder.company}
+                className="rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[var(--color-ink-soft)] disabled:cursor-not-allowed disabled:opacity-50 focus-ring"
+              >
+                Start assessment
+              </button>
+              <button
+                type="button"
+                onClick={() => dispatch({ type: 'SET_STEP', payload: 'assessment' })}
+                className="rounded-full border border-[var(--color-border)] px-6 py-3 text-sm font-semibold text-[var(--color-text)] transition hover:border-[var(--color-accent)]/50 focus-ring"
+              >
+                Skip for now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div className="min-h-screen px-6 pb-24 pt-10 md:pb-10 no-print">
+      <Toast message={toast} visible={showToast} />
+      <div className="mx-auto flex max-w-6xl flex-col gap-8">
+        <TopBar
+          onReset={() => setShowReset(true)}
+          onDownload={handleDownload}
+          editMode={state.editMode}
+          onToggleEdit={() => dispatch({ type: 'TOGGLE_EDIT' })}
+        />
+
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="order-2 grid gap-5 lg:order-1">
+            {categories.map((category) => (
+              <CategoryAccordion
+                key={category.id}
+                id={category.id}
+                title={getCategoryValue(category.id, category.name, state.categoryLabels)}
+                description={getCategoryValue(category.id, category.description, state.categoryDescriptions)}
+                scoreValue={categoryStats[category.id]?.total ?? 0}
+                scoreMax={categoryStats[category.id]?.max ?? 0}
+                scorePercent={categoryStats[category.id]?.percent ?? 0}
+                open={openCategories.includes(category.id)}
+                onToggle={() => toggleCategory(category.id)}
+                editMode={state.editMode}
+                onTitleChange={(value) =>
+                  dispatch({ type: 'SET_CATEGORY_LABEL', payload: { id: category.id, value } })
+                }
+                onDescriptionChange={(value) =>
+                  dispatch({ type: 'SET_CATEGORY_DESCRIPTION', payload: { id: category.id, value } })
+                }
+              >
+                {category.questions.map((question) => (
+                  <SliderRow
+                    key={question.id}
+                    id={question.id}
+                    label={getLabel(question.id, question.label, state.labels)}
+                    helper={question.helper}
+                    value={state.answers[question.id] ?? question.defaultValue}
+                    onChange={(value) =>
+                      dispatch({ type: 'SET_ANSWER', payload: { id: question.id, value } })
+                    }
+                    editMode={state.editMode}
+                    onLabelChange={(value) =>
+                      dispatch({ type: 'SET_LABEL', payload: { id: question.id, value } })
+                    }
+                  />
+                ))}
+              </CategoryAccordion>
+            ))}
+          </div>
+
+          <div className="order-1 lg:order-2 lg:sticky lg:top-8">
+            <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <div className="text-xs uppercase text-[var(--color-muted)]">Summary</div>
+                  <div className="text-3xl font-semibold">{summary.overall}</div>
+                  <div className="text-xs text-[var(--color-muted)]">Overall score</div>
+                </div>
+                {state.founder.assessmentName ? (
+                  <div className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs">
+                    {state.founder.assessmentName}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="mt-6">
+                <RadarCanvas
+                  scores={summary.categoryScores.map((score) => ({
+                    ...score,
+                    name: getCategoryValue(score.id, score.name, state.categoryLabels),
+                  }))}
+                />
+              </div>
+
+              <div className="mt-5 grid gap-2 text-sm">
+                {summary.categoryScores.map((score) => (
+                  <div key={score.id} className="grid grid-cols-[1fr_auto] items-center gap-4">
+                    <span className="text-[var(--color-muted)]">
+                      {getCategoryValue(score.id, score.name, state.categoryLabels)}
+                    </span>
+                    <span className={`font-semibold ${scoreTone(score.score)}`}>{score.score}%</span>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-[var(--color-border)] bg-[var(--color-panel)]/95 px-6 py-3 backdrop-blur lg:hidden">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs text-[var(--color-muted)]">Overall</div>
+            <div className="text-xl font-semibold">{summary.overall}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowInsights(true)}
+            className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-semibold text-white focus-ring"
+          >
+            View insights
+          </button>
+        </div>
+      </div>
+
+      <BottomSheet open={showInsights} onClose={() => setShowInsights(false)} title="Insights">
+        <div className="rounded-2xl bg-[var(--color-panel)] p-4 text-sm">
+          <div className="text-xs uppercase text-[var(--color-muted)]">Strengths & Gaps</div>
+          <div className="mt-2">
+            Strengths:{' '}
+            <span className="text-[var(--color-accent)]">
+              {summary.strengths
+                .map((s) => getCategoryValue(s.id, s.name, state.categoryLabels))
+                .join(', ')}
+            </span>
+          </div>
+          <div className="mt-1">
+            Gaps:{' '}
+            <span className="text-[var(--color-danger)]">
+              {summary.gaps
+                .map((g) => getCategoryValue(g.id, g.name, state.categoryLabels))
+                .join(', ')}
+            </span>
+          </div>
+        </div>
+      </BottomSheet>
+
+      <Modal
+        open={showReset}
+        onClose={() => setShowReset(false)}
+        title="Reset assessment"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowReset(false)}
+              className="rounded-full border border-[var(--color-border)] px-4 py-2 text-xs focus-ring"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleReset}
+              className="rounded-full bg-[var(--color-danger)] px-4 py-2 text-xs font-semibold text-black focus-ring"
+            >
+              Reset now
+            </button>
+          </>
+        }
+      >
+        <p>Reset all scores back to defaults.</p>
+        <label className="mt-4 flex items-center gap-2 text-xs text-[var(--color-muted)]">
+          <input
+            type="checkbox"
+            checked={keepLabels}
+            onChange={(event) => setKeepLabels(event.target.checked)}
+            className="h-4 w-4 accent-[var(--color-accent)]"
+          />
+          Keep edited question labels
+        </label>
+      </Modal>
+
+    </div>
+      <div className="print-only">
+      <div className="print-root">
+        <div className="print-header">
+          <div className="print-title">Top Talent Assessment</div>
+          <div className="print-meta">
+            <div>{state.founder.name ? `Founder: ${state.founder.name}` : 'Founder: —'}</div>
+            <div>{state.founder.company ? `Company: ${state.founder.company}` : 'Company: —'}</div>
+            <div>
+              {state.founder.assessmentName
+                ? `Assessment: ${state.founder.assessmentName}`
+                : 'Assessment: —'}
+            </div>
+            <div>{`Date: ${new Date().toLocaleDateString()}`}</div>
+          </div>
+        </div>
+
+        <div className="print-card">
+          <div className="print-kicker">Overall score</div>
+          <div className="print-score">{summary.overall}</div>
+          <div className="print-grid">
+            {summary.categoryScores.map((score) => (
+              <div key={score.id} className="print-grid-row">
+                <span>{getCategoryValue(score.id, score.name, state.categoryLabels)}</span>
+                <span className="print-accent">{score.score}</span>
+              </div>
+            ))}
+          </div>
+          <div className="print-insights">
+            <div>
+              Strengths:{' '}
+              <span className="print-accent">
+                {summary.strengths
+                  .map((s) => getCategoryValue(s.id, s.name, state.categoryLabels))
+                  .join(', ')}
+              </span>
+            </div>
+            <div>
+              Gaps:{' '}
+              <span className="print-warning">
+                {summary.gaps
+                  .map((g) => getCategoryValue(g.id, g.name, state.categoryLabels))
+                  .join(', ')}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {categories.map((category) => (
+          <div key={category.id} className="print-section">
+            <div className="print-section-header">
+              <div>
+                <div className="print-section-title">
+                  {getCategoryValue(category.id, category.name, state.categoryLabels)}
+                </div>
+                <div className="print-section-desc">
+                  {getCategoryValue(category.id, category.description, state.categoryDescriptions)}
+                </div>
+              </div>
+              <div className="print-section-score">
+                {categoryScoreMap.get(category.id) ?? 0}
+              </div>
+            </div>
+            <div className="print-questions">
+              {category.questions.map((question) => {
+                const questionValue = state.answers[question.id] ?? question.defaultValue;
+                return (
+                  <div key={question.id} className="print-question-row">
+                    <div className="print-question-text">
+                      <div className="print-question-label">
+                        {getLabel(question.id, question.label, state.labels)}
+                      </div>
+                      <div className="print-question-helper">{question.helper}</div>
+                    </div>
+                    <div className="print-question-score">{questionValue}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      </div>
+    </>
+  );
+};
+
+export default App;

@@ -157,7 +157,7 @@ const sanitizeIncomingState = (incoming: Partial<AssessmentState>): Partial<Asse
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [openCategories, setOpenCategories] = useState<string[]>(['engineering']);
+  const [openCategory, setOpenCategory] = useState<string>('engineering');
   const [toast, setToast] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [showReset, setShowReset] = useState(false);
@@ -165,21 +165,6 @@ const App = () => {
   const [keepLabels, setKeepLabels] = useState(true);
 
   const summary = useMemo(() => computeScores(categories, state.answers), [state.answers]);
-  const categoryStats = useMemo(() => {
-    return categories.reduce<Record<string, { total: number; max: number; percent: number }>>(
-      (acc, category) => {
-        const total = category.questions.reduce((sum, question) => {
-          const value = state.answers[question.id] ?? question.defaultValue;
-          return sum + Math.max(0, Math.min(5, value));
-        }, 0);
-        const max = category.questions.length * 5;
-        const percent = max === 0 ? 0 : Math.round((total / max) * 100);
-        acc[category.id] = { total, max, percent };
-        return acc;
-      },
-      {}
-    );
-  }, [state.answers]);
   const categoryScoreMap = useMemo(
     () => new Map(summary.categoryScores.map((score) => [score.id, score.score])),
     [summary.categoryScores]
@@ -219,9 +204,7 @@ const App = () => {
   }, [toast]);
 
   const toggleCategory = (id: string) => {
-    setOpenCategories((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
-    );
+    setOpenCategory((prev) => (prev === id ? '' : id));
   };
 
   const handleDownload = () => {
@@ -241,7 +224,7 @@ const App = () => {
         <div className="mx-auto max-w-3xl animate-fade-up">
           <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-panel)] p-8 shadow-lg">
             <div className="text-sm uppercase tracking-[0.3em] text-[var(--color-muted)]">Talent OS</div>
-            <h1 className="mt-4 text-4xl font-semibold font-display">Top Talent Assessment</h1>
+            <h1 className="mt-4 text-4xl font-semibold font-display">Top Talent Tune-up</h1>
             <p className="mt-3 text-[var(--color-muted)]">
               Capture your baseline across product, engineering, leadership, go-to-market, and finance.
             </p>
@@ -319,18 +302,15 @@ const App = () => {
           onToggleEdit={() => dispatch({ type: 'TOGGLE_EDIT' })}
         />
 
-        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
-          <div className="order-2 grid gap-5 lg:order-1">
+        <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
+          <div className="order-2 grid divide-y-2 divide-[var(--color-border)] lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
             {categories.map((category) => (
               <CategoryAccordion
                 key={category.id}
                 id={category.id}
                 title={getCategoryValue(category.id, category.name, state.categoryLabels)}
                 description={getCategoryValue(category.id, category.description, state.categoryDescriptions)}
-                scoreValue={categoryStats[category.id]?.total ?? 0}
-                scoreMax={categoryStats[category.id]?.max ?? 0}
-                scorePercent={categoryStats[category.id]?.percent ?? 0}
-                open={openCategories.includes(category.id)}
+                open={openCategory === category.id}
                 onToggle={() => toggleCategory(category.id)}
                 editMode={state.editMode}
                 onTitleChange={(value) =>
@@ -360,8 +340,8 @@ const App = () => {
             ))}
           </div>
 
-          <div className="order-1 lg:order-2 lg:sticky lg:top-8">
-            <div className="rounded-3xl border border-[var(--color-border)] bg-[var(--color-panel)] p-5 shadow-lg">
+          <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:pl-8">
+            <div className="border-y-2 border-[var(--color-border)] py-6">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-xs uppercase text-[var(--color-muted)]">Summary</div>
@@ -483,7 +463,7 @@ const App = () => {
       <div className="print-only">
       <div className="print-root">
         <div className="print-header">
-          <div className="print-title">Top Talent Assessment</div>
+          <div className="print-title">Top Talent Tune-up</div>
           <div className="print-meta">
             <div>{state.founder.name ? `Founder: ${state.founder.name}` : 'Founder: —'}</div>
             <div>{state.founder.company ? `Company: ${state.founder.company}` : 'Company: —'}</div>

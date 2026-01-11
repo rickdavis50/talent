@@ -18,7 +18,7 @@ const TopBar: React.FC<TopBarProps> = ({
   return (
     <div className="flex flex-wrap items-center justify-between gap-4">
       <div>
-        <div className="text-4xl font-semibold font-display">Top Talent Assessment</div>
+        <div className="text-4xl font-semibold font-display">Top Talent Tune-up</div>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           Adjust each signal to see real-time strengths and gaps.
         </p>

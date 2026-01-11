@@ -21,7 +21,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
   onLabelChange,
 }) => {
   return (
-    <div className="question-card rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] p-4 transition hover:-translate-y-0.5 hover:border-[var(--color-accent)]/40">
+    <div className="question-card border-b border-[var(--color-border)]/40 py-4 transition">
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
           {editMode ? (

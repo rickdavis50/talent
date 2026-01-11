@@ -7,9 +7,6 @@ type CategoryAccordionProps = {
   id: string;
   title: string;
   description: string;
-  scoreValue: number;
-  scoreMax: number;
-  scorePercent: number;
   open: boolean;
   onToggle: () => void;
   editMode: boolean;
@@ -22,9 +19,6 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   id,
   title,
   description,
-  scoreValue,
-  scoreMax,
-  scorePercent,
   open,
   onToggle,
   editMode,
@@ -33,41 +27,43 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   children,
 }) => {
   return (
-    <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] shadow-sm">
+    <div>
       <AppButton
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="grid h-auto min-h-[72px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-none px-5 py-4 text-left"
+        className="grid h-auto min-h-[72px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-none px-1 py-4 text-left"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         id={`${id}-header`}
       >
         <div className="min-w-0">
-          <div className="flex flex-wrap items-baseline gap-3">
-            {editMode ? (
-              <input
-                value={title}
-                onChange={(event) => onTitleChange(event.target.value)}
-                className="min-w-[180px] flex-1 rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-                aria-label="Edit category title"
-              />
-            ) : (
-              <div
-                className={`font-semibold font-display ${
-                  open ? 'text-lg' : 'text-base'
-                }`}
-              >
-                {title}
-              </div>
-            )}
-            <div className="text-right">
-              <div className="text-xs font-semibold text-[var(--color-text)]">
-                {scoreValue} of {scoreMax}
-              </div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
-                {scorePercent}%
-              </div>
+          <div className="flex items-start gap-3">
+            <div
+              className="mt-1 flex flex-col gap-1"
+              aria-hidden="true"
+            >
+              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+            </div>
+            <div className="min-w-0">
+              {editMode ? (
+                <input
+                  value={title}
+                  onChange={(event) => onTitleChange(event.target.value)}
+                  className="min-w-[180px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                  aria-label="Edit category title"
+                />
+              ) : (
+                <div
+                  className={`font-semibold font-display ${
+                    open ? 'text-lg' : 'text-base'
+                  }`}
+                >
+                  {title}
+                </div>
+              )}
             </div>
           </div>
           {editMode ? (

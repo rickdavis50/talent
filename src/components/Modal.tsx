@@ -56,12 +56,13 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }
           <div className="text-xl font-semibold">{title}</div>
           <AppButton
             type="button"
-            variant="outline"
-            size="sm"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
-            className="h-7 rounded-full px-3 text-xs"
+            aria-label="Close"
+            className="h-8 w-8 rounded-full"
           >
-            Close
+            x
           </AppButton>
         </div>
         <div className="mt-4 text-sm text-[var(--color-text)]">{children}</div>

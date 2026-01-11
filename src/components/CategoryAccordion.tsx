@@ -15,6 +15,8 @@ type CategoryAccordionProps = {
   onDragStart?: (id: string) => void;
   onDragOver?: (event: React.DragEvent<HTMLDivElement>, id: string) => void;
   onDrop?: (id: string) => void;
+  titleOptions: string[];
+  iconSrc: string;
   children: React.ReactNode;
 };
 
@@ -30,6 +32,8 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   onDragStart,
   onDragOver,
   onDrop,
+  titleOptions,
+  iconSrc,
   children,
 }) => {
   return (
@@ -72,19 +76,28 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
                 <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
               </div>
             ) : null}
-            <div className="min-w-0">
-              {editMode ? (
-                <input
-                  value={title}
-                  onChange={(event) => onTitleChange(event.target.value)}
-                  className="min-w-[180px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
-                  aria-label="Edit category title"
-                />
-              ) : (
-                <div className="font-semibold font-display text-base">
-                  {title}
-                </div>
-              )}
+            <div className="flex min-w-0 items-center gap-3">
+              <img src={iconSrc} alt="" className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <div className="min-w-0">
+                {editMode ? (
+                  <select
+                    value={title}
+                    onChange={(event) => onTitleChange(event.target.value)}
+                    className="min-w-[200px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                    aria-label="Edit category title"
+                  >
+                    {titleOptions.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <div className="font-semibold font-display text-base">
+                    {title}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           {editMode ? (

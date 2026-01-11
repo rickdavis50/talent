@@ -32,6 +32,7 @@ export type CategoryScore = {
   id: string;
   name: string;
   score: number;
+  iconSrc?: string;
 };
 
 export type ScoreSummary = {

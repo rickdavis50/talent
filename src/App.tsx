@@ -1,5 +1,10 @@
 import React, { useEffect, useMemo, useReducer, useState } from 'react';
 import { categories } from './data/questions';
+import iconEngineer from './assets/icon_engineer.svg';
+import iconFinance from './assets/icon_finance.svg';
+import iconGoToMarket from './assets/icon_go_to_market.svg';
+import iconLeadership from './assets/icon_leadership.svg';
+import iconProduct from './assets/icon_product.svg';
 import { AssessmentState, FounderInfo } from './types';
 import { computeScores } from './lib/scoring';
 import { decodeStateFromQuery } from './lib/share';
@@ -42,7 +47,9 @@ type Action =
   | { type: 'SET_CATEGORY_LABEL'; payload: { id: string; value: string } }
   | { type: 'SET_CATEGORY_DESCRIPTION'; payload: { id: string; value: string } }
   | { type: 'TOGGLE_EDIT' }
-  | { type: 'RESET'; payload: { keepLabels: boolean } }
+  | { type: 'RESET_SCORES' }
+  | { type: 'RESET_TEXT' }
+  | { type: 'RESET_ALL' }
   | { type: 'HYDRATE'; payload: Partial<AssessmentState> };
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
@@ -75,13 +82,29 @@ const reducer = (state: AssessmentState, action: Action): AssessmentState => {
       };
     case 'TOGGLE_EDIT':
       return { ...state, editMode: !state.editMode };
-    case 'RESET': {
+    case 'RESET_SCORES': {
       return {
         ...state,
         answers: defaultAnswers,
-        labels: action.payload.keepLabels ? state.labels : {},
-        categoryLabels: action.payload.keepLabels ? state.categoryLabels : {},
-        categoryDescriptions: action.payload.keepLabels ? state.categoryDescriptions : {},
+        editMode: false,
+      };
+    }
+    case 'RESET_TEXT': {
+      return {
+        ...state,
+        labels: {},
+        categoryLabels: {},
+        categoryDescriptions: {},
+        editMode: false,
+      };
+    }
+    case 'RESET_ALL': {
+      return {
+        ...state,
+        answers: defaultAnswers,
+        labels: {},
+        categoryLabels: {},
+        categoryDescriptions: {},
         editMode: false,
       };
     }
@@ -162,11 +185,26 @@ const App = () => {
   const [showToast, setShowToast] = useState(false);
   const [showReset, setShowReset] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
-  const [keepLabels, setKeepLabels] = useState(true);
+  const [showProfile, setShowProfile] = useState(false);
   const [categoryOrder, setCategoryOrder] = useState<string[]>(() =>
     categories.map((category) => category.id)
   );
   const [draggingCategory, setDraggingCategory] = useState<string | null>(null);
+
+  const titleOptions = useMemo(
+    () => ['Engineering', 'Leadership', 'Go-to-Market', 'Finance', 'Product'],
+    []
+  );
+  const categoryIconMap = useMemo(
+    () => ({
+      Engineering: iconEngineer,
+      Leadership: iconLeadership,
+      'Go-to-Market': iconGoToMarket,
+      Finance: iconFinance,
+      Product: iconProduct,
+    }),
+    []
+  );
 
   const summary = useMemo(() => computeScores(categories, state.answers), [state.answers]);
   const categoryMap = useMemo(
@@ -219,8 +257,22 @@ const App = () => {
     window.print();
   };
 
-  const handleReset = () => {
-    dispatch({ type: 'RESET', payload: { keepLabels } });
+  const handleResetScores = () => {
+    dispatch({ type: 'RESET_SCORES' });
+    clearState();
+    setShowReset(false);
+    setToast('Scores reset');
+  };
+
+  const handleResetText = () => {
+    dispatch({ type: 'RESET_TEXT' });
+    clearState();
+    setShowReset(false);
+    setToast('Text reset');
+  };
+
+  const handleResetAll = () => {
+    dispatch({ type: 'RESET_ALL' });
     clearState();
     setShowReset(false);
     setToast('Assessment reset');
@@ -250,6 +302,13 @@ const App = () => {
     });
     setDraggingCategory(null);
   };
+
+  const resolveCategoryTitle = (categoryId: string, fallback: string) => {
+    const value = getCategoryValue(categoryId, fallback, state.categoryLabels);
+    return titleOptions.includes(value) ? value : fallback;
+  };
+
+  const getCategoryIcon = (label: string) => categoryIconMap[label] ?? iconProduct;
 
   if (state.step === 'welcome') {
     return (
@@ -333,6 +392,7 @@ const App = () => {
           onDownload={handleDownload}
           editMode={state.editMode}
           onToggleEdit={() => dispatch({ type: 'TOGGLE_EDIT' })}
+          onProfile={() => setShowProfile(true)}
         />
 
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
@@ -340,11 +400,13 @@ const App = () => {
             {categoryOrder.map((id) => {
               const category = categoryMap.get(id);
               if (!category) return null;
+              const resolvedTitle = resolveCategoryTitle(category.id, category.name);
+              const iconSrc = getCategoryIcon(resolvedTitle);
               return (
               <CategoryAccordion
                 key={category.id}
                 id={category.id}
-                title={getCategoryValue(category.id, category.name, state.categoryLabels)}
+                title={resolvedTitle}
                 description={getCategoryValue(category.id, category.description, state.categoryDescriptions)}
                 open={openCategory === category.id}
                 onToggle={() => toggleCategory(category.id)}
@@ -358,6 +420,8 @@ const App = () => {
                 onDragStart={state.editMode ? handleCategoryDragStart : undefined}
                 onDragOver={state.editMode ? handleCategoryDragOver : undefined}
                 onDrop={state.editMode ? handleCategoryDrop : undefined}
+                titleOptions={titleOptions}
+                iconSrc={iconSrc}
               >
                 {category.questions.map((question) => (
                   <SliderRow
@@ -397,10 +461,14 @@ const App = () => {
 
               <div className="mt-6">
                 <RadarCanvas
-                  scores={summary.categoryScores.map((score) => ({
-                    ...score,
-                    name: getCategoryValue(score.id, score.name, state.categoryLabels),
-                  }))}
+                  scores={summary.categoryScores.map((score) => {
+                    const resolvedTitle = resolveCategoryTitle(score.id, score.name);
+                    return {
+                      ...score,
+                      name: resolvedTitle,
+                      iconSrc: getCategoryIcon(resolvedTitle),
+                    };
+                  })}
                 />
               </div>
 
@@ -470,33 +538,84 @@ const App = () => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => setShowReset(false)}
+              onClick={handleResetScores}
               className="rounded-full px-4"
             >
-              Cancel
+              Reset scores
+            </AppButton>
+            <AppButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleResetText}
+              className="rounded-full px-4"
+            >
+              Reset text
             </AppButton>
             <AppButton
               type="button"
               variant="destructive"
               size="sm"
-              onClick={handleReset}
+              onClick={handleResetAll}
               className="rounded-full px-4"
             >
-              Reset now
+              Reset all
             </AppButton>
           </>
         }
       >
-        <p>Reset all scores back to defaults.</p>
-        <label className="mt-4 flex items-center gap-2 text-xs text-[var(--color-muted)]">
-          <input
-            type="checkbox"
-            checked={keepLabels}
-            onChange={(event) => setKeepLabels(event.target.checked)}
-            className="h-4 w-4 accent-[var(--color-accent)]"
-          />
-          Keep edited question labels
-        </label>
+        <p className="text-xs text-[var(--color-muted)]">
+          Choose what you want to reset.
+        </p>
+      </Modal>
+
+      <Modal
+        open={showProfile}
+        onClose={() => setShowProfile(false)}
+        title="Update profile"
+        actions={
+          <AppButton
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setShowProfile(false)}
+            className="rounded-full px-4"
+          >
+            Done
+          </AppButton>
+        }
+      >
+        <div className="grid gap-4">
+          <label className="grid gap-2 text-xs text-[var(--color-muted)]">
+            Founder name
+            <input
+              value={state.founder.name}
+              onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { name: event.target.value } })}
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 text-sm focus-ring"
+              placeholder="Alex Rivera"
+            />
+          </label>
+          <label className="grid gap-2 text-xs text-[var(--color-muted)]">
+            Company
+            <input
+              value={state.founder.company}
+              onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { company: event.target.value } })}
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 text-sm focus-ring"
+              placeholder="Nova Health"
+            />
+          </label>
+          <label className="grid gap-2 text-xs text-[var(--color-muted)]">
+            Assessment name (optional)
+            <input
+              value={state.founder.assessmentName}
+              onChange={(event) =>
+                dispatch({ type: 'SET_FOUNDER', payload: { assessmentName: event.target.value } })
+              }
+              className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 text-sm focus-ring"
+              placeholder="Seed readiness check"
+            />
+          </label>
+        </div>
       </Modal>
 
     </div>

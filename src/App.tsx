@@ -163,8 +163,16 @@ const App = () => {
   const [showReset, setShowReset] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [keepLabels, setKeepLabels] = useState(true);
+  const [categoryOrder, setCategoryOrder] = useState<string[]>(() =>
+    categories.map((category) => category.id)
+  );
+  const [draggingCategory, setDraggingCategory] = useState<string | null>(null);
 
   const summary = useMemo(() => computeScores(categories, state.answers), [state.answers]);
+  const categoryMap = useMemo(
+    () => new Map(categories.map((category) => [category.id, category])),
+    []
+  );
   const categoryScoreMap = useMemo(
     () => new Map(summary.categoryScores.map((score) => [score.id, score.score])),
     [summary.categoryScores]
@@ -216,6 +224,31 @@ const App = () => {
     clearState();
     setShowReset(false);
     setToast('Assessment reset');
+  };
+
+  const handleCategoryDragStart = (id: string) => {
+    setDraggingCategory(id);
+  };
+
+  const handleCategoryDragOver = (event: React.DragEvent<HTMLDivElement>, _id: string) => {
+    event.preventDefault();
+  };
+
+  const handleCategoryDrop = (targetId: string) => {
+    if (!draggingCategory || draggingCategory === targetId) {
+      setDraggingCategory(null);
+      return;
+    }
+    setCategoryOrder((prev) => {
+      const next = [...prev];
+      const fromIndex = next.indexOf(draggingCategory);
+      const toIndex = next.indexOf(targetId);
+      if (fromIndex === -1 || toIndex === -1) return prev;
+      next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, draggingCategory);
+      return next;
+    });
+    setDraggingCategory(null);
   };
 
   if (state.step === 'welcome') {
@@ -304,7 +337,10 @@ const App = () => {
 
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
           <div className="order-2 grid divide-y-2 divide-[var(--color-border)] lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
-            {categories.map((category) => (
+            {categoryOrder.map((id) => {
+              const category = categoryMap.get(id);
+              if (!category) return null;
+              return (
               <CategoryAccordion
                 key={category.id}
                 id={category.id}
@@ -319,6 +355,9 @@ const App = () => {
                 onDescriptionChange={(value) =>
                   dispatch({ type: 'SET_CATEGORY_DESCRIPTION', payload: { id: category.id, value } })
                 }
+                onDragStart={state.editMode ? handleCategoryDragStart : undefined}
+                onDragOver={state.editMode ? handleCategoryDragOver : undefined}
+                onDrop={state.editMode ? handleCategoryDrop : undefined}
               >
                 {category.questions.map((question) => (
                   <SliderRow
@@ -337,7 +376,8 @@ const App = () => {
                   />
                 ))}
               </CategoryAccordion>
-            ))}
+              );
+            })}
           </div>
 
           <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:pl-8">

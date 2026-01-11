@@ -12,6 +12,9 @@ type CategoryAccordionProps = {
   editMode: boolean;
   onTitleChange: (value: string) => void;
   onDescriptionChange: (value: string) => void;
+  onDragStart?: (id: string) => void;
+  onDragOver?: (event: React.DragEvent<HTMLDivElement>, id: string) => void;
+  onDrop?: (id: string) => void;
   children: React.ReactNode;
 };
 
@@ -24,10 +27,19 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   editMode,
   onTitleChange,
   onDescriptionChange,
+  onDragStart,
+  onDragOver,
+  onDrop,
   children,
 }) => {
   return (
-    <div>
+    <div
+      onDragOver={onDragOver ? (event) => onDragOver(event, id) : undefined}
+      onDrop={onDrop ? (event) => {
+        event.preventDefault();
+        onDrop(id);
+      } : undefined}
+    >
       <AppButton
         type="button"
         variant="ghost"
@@ -39,14 +51,27 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
       >
         <div className="min-w-0">
           <div className="flex items-start gap-3">
-            <div
-              className="mt-1 flex flex-col gap-1"
-              aria-hidden="true"
-            >
-              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
-              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
-              <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
-            </div>
+            {editMode ? (
+              <div
+                className="mt-1 flex flex-col gap-1 cursor-grab"
+                aria-hidden="true"
+                draggable
+                onDragStart={
+                  onDragStart
+                    ? (event) => {
+                        event.dataTransfer.setData('text/plain', id);
+                        event.dataTransfer.effectAllowed = 'move';
+                        onDragStart(id);
+                      }
+                    : undefined
+                }
+                title="Drag to reorder"
+              >
+                <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+                <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+                <span className="h-0.5 w-4 rounded-full bg-[var(--color-border)]" />
+              </div>
+            ) : null}
             <div className="min-w-0">
               {editMode ? (
                 <input
@@ -56,11 +81,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
                   aria-label="Edit category title"
                 />
               ) : (
-                <div
-                  className={`font-semibold font-display ${
-                    open ? 'text-lg' : 'text-base'
-                  }`}
-                >
+                <div className="font-semibold font-display text-base">
                   {title}
                 </div>
               )}
@@ -75,9 +96,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
             />
           ) : (
             <p
-              className={`mt-1 text-[var(--color-muted)] ${
-                open ? 'text-xs' : 'text-[10px] leading-tight'
-              }`}
+              className="mt-1 text-xs text-[var(--color-muted)]"
             >
               {description}
             </p>

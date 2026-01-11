@@ -579,22 +579,13 @@ const App = () => {
         open={showProfile}
         onClose={() => setShowProfile(false)}
         title="Update profile"
-        actions={
-          <AppButton
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowProfile(false)}
-            className="rounded-full px-4"
-          >
-            Done
-          </AppButton>
-        }
       >
         <div className="grid gap-4">
           <label className="grid gap-2 text-xs text-[var(--color-muted)]">
             Founder name
             <input
+              data-autofocus
+              autoFocus
               value={state.founder.name}
               onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { name: event.target.value } })}
               className="rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)] px-4 py-3 text-sm focus-ring"

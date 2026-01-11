@@ -15,10 +15,13 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }
 
   useEffect(() => {
     if (!open) return;
-    const focusable = dialogRef.current?.querySelector<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    const preferred = dialogRef.current?.querySelector<HTMLElement>(
+      '[data-autofocus], input, select, textarea'
     );
-    focusable?.focus();
+    const fallback = dialogRef.current?.querySelector<HTMLElement>(
+      'button, [href], [tabindex]:not([tabindex="-1"])'
+    );
+    (preferred ?? fallback)?.focus();
 
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') onClose();

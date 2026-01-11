@@ -12,6 +12,11 @@ type ModalProps = {
 
 const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }) => {
   const dialogRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -24,7 +29,7 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }
     (preferred ?? fallback)?.focus();
 
     const handleKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
       if (event.key !== 'Tab') return;
       const nodes = dialogRef.current?.querySelectorAll<HTMLElement>(
         'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
@@ -43,7 +48,7 @@ const Modal: React.FC<ModalProps> = ({ open, onClose, title, children, actions }
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 

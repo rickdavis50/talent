@@ -310,6 +310,10 @@ const App = () => {
 
   const getCategoryIcon = (label: string) => categoryIconMap[label] ?? iconProduct;
 
+  const usedTitles = useMemo(() => {
+    return categories.map((category) => resolveCategoryTitle(category.id, category.name));
+  }, [state.categoryLabels, titleOptions]);
+
   if (state.step === 'welcome') {
     return (
       <div className="min-h-screen px-6 py-12">
@@ -402,6 +406,7 @@ const App = () => {
               if (!category) return null;
               const resolvedTitle = resolveCategoryTitle(category.id, category.name);
               const iconSrc = getCategoryIcon(resolvedTitle);
+              const disabledOptions = usedTitles.filter((title) => title !== resolvedTitle);
               return (
               <CategoryAccordion
                 key={category.id}
@@ -421,6 +426,7 @@ const App = () => {
                 onDragOver={state.editMode ? handleCategoryDragOver : undefined}
                 onDrop={state.editMode ? handleCategoryDrop : undefined}
                 titleOptions={titleOptions}
+                disabledOptions={disabledOptions}
                 iconSrc={iconSrc}
               >
                 {category.questions.map((question) => (

@@ -16,6 +16,7 @@ type CategoryAccordionProps = {
   onDragOver?: (event: React.DragEvent<HTMLDivElement>, id: string) => void;
   onDrop?: (id: string) => void;
   titleOptions: string[];
+  disabledOptions: string[];
   iconSrc: string;
   children: React.ReactNode;
 };
@@ -33,6 +34,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   onDragOver,
   onDrop,
   titleOptions,
+  disabledOptions,
   iconSrc,
   children,
 }) => {
@@ -87,7 +89,12 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
                     aria-label="Edit category title"
                   >
                     {titleOptions.map((option) => (
-                      <option key={option} value={option}>
+                      <option
+                        key={option}
+                        value={option}
+                        disabled={disabledOptions.includes(option) && option !== title}
+                        className={disabledOptions.includes(option) && option !== title ? 'text-[var(--color-muted)]' : undefined}
+                      >
                         {option}
                       </option>
                     ))}

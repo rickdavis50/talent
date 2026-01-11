@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { CategoryScore } from '../types';
 
 const RING_LEVELS = [20, 40, 60, 80, 100];
-const WEAK_THRESHOLD = 59;
+const WEAK_THRESHOLD = 80;
 
 type RadarCanvasProps = {
   scores: CategoryScore[];

@@ -195,7 +195,7 @@ const App = () => {
     () => ['Engineering', 'Leadership', 'Go-to-Market', 'Finance', 'Product'],
     []
   );
-  const categoryIconMap = useMemo(
+  const categoryIconMap = useMemo<Record<string, string>>(
     () => ({
       Engineering: iconEngineer,
       Leadership: iconLeadership,

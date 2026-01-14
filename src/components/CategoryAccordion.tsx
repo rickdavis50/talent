@@ -44,22 +44,26 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
 }) => {
   return (
     <div
-      className={`group rounded-[18px] border border-[#272727] bg-[#050505] transition-all duration-300 ${
-        open
-          ? 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_18px_40px_rgba(0,0,0,0.35)]'
-          : 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_10px_30px_rgba(0,0,0,0.2)]'
-      } hover:border-[var(--color-accent)]/40`}
+      className="group relative py-3 transition-all duration-300"
       onDragOver={onDragOver ? (event) => onDragOver(event, id) : undefined}
       onDrop={onDrop ? (event) => {
         event.preventDefault();
         onDrop(id);
       } : undefined}
     >
+      <img
+        src={carrot}
+        alt=""
+        className={`absolute left-0 top-0 h-4 w-4 -translate-x-1 -translate-y-1 opacity-70 transition-transform ${
+          open ? 'rotate-90' : 'rotate-0'
+        }`}
+        aria-hidden="true"
+      />
       <AppButton
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="grid h-auto min-h-[80px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-[18px] px-5 py-4 text-left transition"
+        className="grid h-auto min-h-[80px] w-full grid-cols-[1fr] items-start gap-3 px-4 py-3 text-left transition"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         id={`${id}-header`}
@@ -111,8 +115,9 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <div className="text-[19px] font-semibold text-[var(--color-heading)]">
-                    {title}
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-[19px] font-semibold text-[var(--color-heading)]">{title}</span>
+                    <span className={`text-sm font-semibold ${scoreTone}`}>{score}%</span>
                   </div>
                 )}
                 {!editMode ? (
@@ -131,21 +136,6 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
               aria-label="Edit category description"
             />
           ) : null}
-        </div>
-        <div className="flex items-center gap-3">
-          <div
-            className={`rounded-full border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-1 text-xs font-semibold ${scoreTone}`}
-          >
-            {score}%
-          </div>
-          <img
-            src={carrot}
-            alt=""
-            className={`mt-1 h-4 w-4 shrink-0 opacity-70 transition-transform ${
-              open ? 'rotate-90' : 'rotate-0'
-            }`}
-            aria-hidden="true"
-          />
         </div>
       </AppButton>
       <div

@@ -54,8 +54,11 @@ button, input, select, textarea {
   color: var(--color-heading);
 }
 
-.question-card {
-  min-height: var(--question-row-height);
+.signal-slider {
+  --range-track-height: 6px;
+  --range-thumb-size: 16px;
+  --range-rail: #1d1d1d;
+  --range-rail-active: #ffe3a2;
 }
 
 @keyframes fadeUp {

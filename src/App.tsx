@@ -314,6 +314,17 @@ const App = () => {
     return categories.map((category) => resolveCategoryTitle(category.id, category.name));
   }, [state.categoryLabels, titleOptions]);
 
+  const recommendedActions = useMemo(() => {
+    const firstCategoryId = categoryOrder[0];
+    const category = firstCategoryId ? categoryMap.get(firstCategoryId) : undefined;
+    if (!category) return [];
+    return category.questions.slice(0, 3).map((question) => ({
+      id: question.id,
+      label: getLabel(question.id, question.label, state.labels),
+      categoryTitle: resolveCategoryTitle(category.id, category.name),
+    }));
+  }, [categoryOrder, categoryMap, state.labels, state.categoryLabels, titleOptions]);
+
   if (state.step === 'welcome') {
     return (
       <div className="min-h-screen px-6 py-12">
@@ -400,54 +411,103 @@ const App = () => {
         />
 
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
-          <div className="order-2 grid divide-y-2 divide-[var(--color-border)] lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
-            {categoryOrder.map((id) => {
-              const category = categoryMap.get(id);
-              if (!category) return null;
-              const resolvedTitle = resolveCategoryTitle(category.id, category.name);
-              const iconSrc = getCategoryIcon(resolvedTitle);
-              const disabledOptions = usedTitles.filter((title) => title !== resolvedTitle);
-              return (
-              <CategoryAccordion
-                key={category.id}
-                id={category.id}
-                title={resolvedTitle}
-                description={getCategoryValue(category.id, category.description, state.categoryDescriptions)}
-                open={openCategory === category.id}
-                onToggle={() => toggleCategory(category.id)}
-                editMode={state.editMode}
-                onTitleChange={(value) =>
-                  dispatch({ type: 'SET_CATEGORY_LABEL', payload: { id: category.id, value } })
-                }
-                onDescriptionChange={(value) =>
-                  dispatch({ type: 'SET_CATEGORY_DESCRIPTION', payload: { id: category.id, value } })
-                }
-                onDragStart={state.editMode ? handleCategoryDragStart : undefined}
-                onDragOver={state.editMode ? handleCategoryDragOver : undefined}
-                onDrop={state.editMode ? handleCategoryDrop : undefined}
-                titleOptions={titleOptions}
-                disabledOptions={disabledOptions}
-                iconSrc={iconSrc}
-              >
-                {category.questions.map((question) => (
-                  <SliderRow
-                    key={question.id}
-                    id={question.id}
-                    label={getLabel(question.id, question.label, state.labels)}
-                    helper={question.helper}
-                    value={state.answers[question.id] ?? question.defaultValue}
-                    onChange={(value) =>
-                      dispatch({ type: 'SET_ANSWER', payload: { id: question.id, value } })
-                    }
-                    editMode={state.editMode}
-                    onLabelChange={(value) =>
-                      dispatch({ type: 'SET_LABEL', payload: { id: question.id, value } })
-                    }
-                  />
-                ))}
-              </CategoryAccordion>
-              );
-            })}
+          <div className="order-2 lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
+            <div className="w-full max-w-[600px] space-y-4 font-sans lg:pr-2">
+              <div className="rounded-2xl border border-[#272727] bg-[var(--color-panel)]/70 p-4 shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.3em] text-[var(--color-muted)]">
+                      Today&apos;s Tune-Up
+                    </div>
+                    <div className="mt-2 text-sm text-[var(--color-muted)]">
+                      Goal: Stack quick wins that lift the weekly signal.
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-[var(--color-border)] px-3 py-1 text-[10px] uppercase tracking-[0.3em] text-[var(--color-muted)]">
+                    Mission
+                  </div>
+                </div>
+                <div className="mt-4 grid gap-2">
+                  {recommendedActions.map((action) => (
+                    <AppButton
+                      key={action.id}
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      className="w-full justify-between rounded-xl border border-[var(--color-border)] bg-[var(--color-panel-strong)]/70 px-3 py-2 text-left text-xs font-medium"
+                      onClick={() => {
+                        const target = document.getElementById(action.id);
+                        if (target) {
+                          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          if ('focus' in target) {
+                            (target as HTMLElement).focus();
+                          }
+                        }
+                      }}
+                    >
+                      <span className="block truncate">{action.label}</span>
+                      <span className="rounded-full border border-[var(--color-border)]/70 px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] text-[var(--color-muted)]">
+                        {action.categoryTitle}
+                      </span>
+                    </AppButton>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid gap-3">
+                {categoryOrder.map((id) => {
+                  const category = categoryMap.get(id);
+                  if (!category) return null;
+                  const resolvedTitle = resolveCategoryTitle(category.id, category.name);
+                  const iconSrc = getCategoryIcon(resolvedTitle);
+                  const disabledOptions = usedTitles.filter((title) => title !== resolvedTitle);
+                  const categoryScore = categoryScoreMap.get(category.id) ?? 0;
+                  return (
+                    <CategoryAccordion
+                      key={category.id}
+                      id={category.id}
+                      title={resolvedTitle}
+                      description={getCategoryValue(category.id, category.description, state.categoryDescriptions)}
+                      score={categoryScore}
+                      scoreTone={scoreTone(categoryScore)}
+                      open={openCategory === category.id}
+                      onToggle={() => toggleCategory(category.id)}
+                      editMode={state.editMode}
+                      onTitleChange={(value) =>
+                        dispatch({ type: 'SET_CATEGORY_LABEL', payload: { id: category.id, value } })
+                      }
+                      onDescriptionChange={(value) =>
+                        dispatch({ type: 'SET_CATEGORY_DESCRIPTION', payload: { id: category.id, value } })
+                      }
+                      onDragStart={state.editMode ? handleCategoryDragStart : undefined}
+                      onDragOver={state.editMode ? handleCategoryDragOver : undefined}
+                      onDrop={state.editMode ? handleCategoryDrop : undefined}
+                      titleOptions={titleOptions}
+                      disabledOptions={disabledOptions}
+                      iconSrc={iconSrc}
+                    >
+                      {category.questions.map((question, questionIndex) => (
+                        <SliderRow
+                          key={question.id}
+                          id={question.id}
+                          label={getLabel(question.id, question.label, state.labels)}
+                          helper={question.helper}
+                          value={state.answers[question.id] ?? question.defaultValue}
+                          onChange={(value) =>
+                            dispatch({ type: 'SET_ANSWER', payload: { id: question.id, value } })
+                          }
+                          editMode={state.editMode}
+                          onLabelChange={(value) =>
+                            dispatch({ type: 'SET_LABEL', payload: { id: question.id, value } })
+                          }
+                          index={questionIndex}
+                        />
+                      ))}
+                    </CategoryAccordion>
+                  );
+                })}
+              </div>
+            </div>
           </div>
 
           <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:pl-8">

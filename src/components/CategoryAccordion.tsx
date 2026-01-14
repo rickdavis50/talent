@@ -7,6 +7,8 @@ type CategoryAccordionProps = {
   id: string;
   title: string;
   description: string;
+  score: number;
+  scoreTone: string;
   open: boolean;
   onToggle: () => void;
   editMode: boolean;
@@ -25,6 +27,8 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
   id,
   title,
   description,
+  score,
+  scoreTone,
   open,
   onToggle,
   editMode,
@@ -40,6 +44,11 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
 }) => {
   return (
     <div
+      className={`group rounded-[18px] border border-[#272727] bg-[#050505] transition-all duration-300 ${
+        open
+          ? 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.04),0_18px_40px_rgba(0,0,0,0.35)]'
+          : 'shadow-[inset_0_0_0_1px_rgba(255,255,255,0.03),0_10px_30px_rgba(0,0,0,0.2)]'
+      } hover:border-[var(--color-accent)]/40`}
       onDragOver={onDragOver ? (event) => onDragOver(event, id) : undefined}
       onDrop={onDrop ? (event) => {
         event.preventDefault();
@@ -50,7 +59,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         type="button"
         variant="ghost"
         onClick={onToggle}
-        className="grid h-auto min-h-[72px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-none px-1 py-4 text-left"
+        className="grid h-auto min-h-[80px] w-full grid-cols-[1fr_auto] items-start gap-4 rounded-[18px] px-5 py-4 text-left transition"
         aria-expanded={open}
         aria-controls={`${id}-panel`}
         id={`${id}-header`}
@@ -79,13 +88,15 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
               </div>
             ) : null}
             <div className="flex min-w-0 items-center gap-3">
-              <img src={iconSrc} alt="" className="h-5 w-5 shrink-0" aria-hidden="true" />
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-[var(--color-border)] bg-[var(--color-panel)]">
+                <img src={iconSrc} alt="" className="h-5 w-5" aria-hidden="true" />
+              </div>
               <div className="min-w-0">
                 {editMode ? (
                   <select
                     value={title}
                     onChange={(event) => onTitleChange(event.target.value)}
-                    className="min-w-[200px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold font-display focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                    className="min-w-[200px] w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
                     aria-label="Edit category title"
                   >
                     {titleOptions.map((option) => (
@@ -100,10 +111,15 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
                     ))}
                   </select>
                 ) : (
-                  <div className="font-semibold font-display text-base">
+                  <div className="text-[19px] font-semibold text-[var(--color-heading)]">
                     {title}
                   </div>
                 )}
+                {!editMode ? (
+                  <p className="mt-1 max-w-[360px] truncate text-[13px] text-[var(--color-muted)]" title={description}>
+                    {description}
+                  </p>
+                ) : null}
               </div>
             </div>
           </div>
@@ -114,22 +130,23 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
               className="mt-2 w-full rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-xs focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
               aria-label="Edit category description"
             />
-          ) : (
-            <p
-              className="mt-1 text-xs text-[var(--color-muted)]"
-            >
-              {description}
-            </p>
-          )}
+          ) : null}
         </div>
-        <img
-          src={carrot}
-          alt=""
-          className={`mt-1 h-4 w-4 shrink-0 opacity-70 transition-transform ${
-            open ? 'rotate-90' : 'rotate-0'
-          }`}
-          aria-hidden="true"
-        />
+        <div className="flex items-center gap-3">
+          <div
+            className={`rounded-full border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-1 text-xs font-semibold ${scoreTone}`}
+          >
+            {score}%
+          </div>
+          <img
+            src={carrot}
+            alt=""
+            className={`mt-1 h-4 w-4 shrink-0 opacity-70 transition-transform ${
+              open ? 'rotate-90' : 'rotate-0'
+            }`}
+            aria-hidden="true"
+          />
+        </div>
       </AppButton>
       <div
         id={`${id}-panel`}

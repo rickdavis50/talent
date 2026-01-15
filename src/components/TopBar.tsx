@@ -1,7 +1,6 @@
 import React from 'react';
 
 import AppButton from './AppButton';
-import iconProfile from '../assets/icon_profile.svg';
 
 type TopBarProps = {
   onReset: () => void;
@@ -23,22 +22,21 @@ const TopBar: React.FC<TopBarProps> = ({
       <div>
         <div className="flex items-center gap-3">
           <div className="text-4xl font-semibold font-display">Top Talent Tune-up</div>
-          <AppButton
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={onProfile}
-            aria-label="Edit profile"
-            className="h-10 w-10 rounded-full"
-          >
-            <img src={iconProfile} alt="" className="h-5 w-5" aria-hidden="true" />
-          </AppButton>
         </div>
         <p className="mt-1 text-sm text-[var(--color-muted)]">
           Adjust each signal to see real-time strengths and gaps.
         </p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
+        <AppButton
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={onProfile}
+          className="rounded-full px-4"
+        >
+          Profile
+        </AppButton>
         <AppButton
           type="button"
           variant="outline"

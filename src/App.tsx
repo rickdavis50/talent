@@ -462,12 +462,12 @@ const App = () => {
             <div className="border-y-2 border-[var(--color-border)] py-6">
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="text-xs uppercase text-[var(--color-muted)]">Summary</div>
-                  <div className="text-3xl font-semibold">{summary.overall}</div>
+                  <div className="text-xs uppercase text-[var(--color-muted)]">Overall</div>
+                  <div className="text-3xl font-semibold">{summary.overall}%</div>
                   <div className="text-xs text-[var(--color-muted)]">Overall score</div>
                 </div>
                 {state.founder.assessmentName ? (
-                  <div className="rounded-full border border-[var(--color-border)] px-3 py-1 text-xs">
+                  <div className="rounded-full px-3 py-1 text-xs text-[var(--color-muted)]">
                     {state.founder.assessmentName}
                   </div>
                 ) : null}
@@ -507,7 +507,7 @@ const App = () => {
         <div className="flex items-center justify-between">
           <div>
             <div className="text-xs text-[var(--color-muted)]">Overall</div>
-            <div className="text-xl font-semibold">{summary.overall}</div>
+            <div className="text-xl font-semibold">{summary.overall}%</div>
           </div>
           <AppButton
             type="button"
@@ -629,7 +629,7 @@ const App = () => {
         <div className="print-header">
           <div className="print-title">Top Talent Tune-up</div>
           <div className="print-meta">
-            <div>{state.founder.name ? `Founder: ${state.founder.name}` : 'Founder: —'}</div>
+            <div>{state.founder.name ? `Name: ${state.founder.name}` : 'Name: —'}</div>
             <div>{state.founder.company ? `Company: ${state.founder.company}` : 'Company: —'}</div>
             <div>
               {state.founder.assessmentName

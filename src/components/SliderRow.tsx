@@ -36,7 +36,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
             ) : (
               <label
                 htmlFor={id}
-                className="block truncate text-[15px] font-medium text-[var(--color-text)]"
+                className="block truncate text-[15px] font-medium text-[#c7c7c7]"
                 title={label}
               >
                 {label}

@@ -216,7 +216,7 @@ const App = () => {
     [summary.categoryScores]
   );
   const scoreTone = (score: number) =>
-    score < 80 ? 'text-[var(--color-danger)]' : 'text-[var(--color-accent)]';
+    score < 75 ? 'text-[var(--color-danger)]' : 'text-[var(--color-accent)]';
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);

@@ -180,7 +180,7 @@ const sanitizeIncomingState = (incoming: Partial<AssessmentState>): Partial<Asse
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const [openCategory, setOpenCategory] = useState<string>('engineering');
+  const [openCategory, setOpenCategory] = useState<string>('');
   const [toast, setToast] = useState('');
   const [showToast, setShowToast] = useState(false);
   const [showReset, setShowReset] = useState(false);

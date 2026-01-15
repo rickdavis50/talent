@@ -30,7 +30,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
                 id={`${id}-label`}
                 value={label}
                 onChange={(event) => onLabelChange(event.target.value)}
-                className="w-full min-w-[360px] md:min-w-[520px] rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
+                className="w-full min-w-[360px] md:min-w-[520px] rounded-lg border border-[var(--color-border)] bg-[var(--color-panel)] px-3 py-2 text-sm font-medium focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--color-accent)]"
                 aria-label="Edit question label"
               />
             ) : (

@@ -328,7 +328,7 @@ const App = () => {
 
             <div className="mt-8 grid gap-5">
               <label className="grid gap-2 text-sm">
-                Founder name
+                Name
                 <input
                   value={state.founder.name}
                   onChange={(event) => dispatch({ type: 'SET_FOUNDER', payload: { name: event.target.value } })}

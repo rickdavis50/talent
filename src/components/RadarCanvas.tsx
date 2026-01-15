@@ -178,13 +178,16 @@ const drawRadar = (
     const y = Math.sin(angle) * labelRadius;
     const icon = iconImages[index];
     if (icon && icon.complete && icon.naturalWidth > 0) {
-      const size = 18;
-      ctx.drawImage(icon, x - size / 2, y - size / 2, size, size);
+      const targetSize = 18;
+      const ratio = icon.naturalWidth / icon.naturalHeight;
+      const width = ratio >= 1 ? targetSize : targetSize * ratio;
+      const height = ratio >= 1 ? targetSize / ratio : targetSize;
+      ctx.drawImage(icon, x - width / 2, y - height / 2, width, height);
       return;
     }
 
     ctx.fillStyle = 'rgba(240, 240, 240, 0.78)';
-    ctx.font = '11px "IBM Plex Mono", ui-monospace, monospace';
+    ctx.font = '11px "Inter", "Helvetica Neue", Arial, sans-serif';
     const lines = splitLabel(score.name);
     ctx.save();
     ctx.translate(x, y);
@@ -212,7 +215,7 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
   const [iconVersion, setIconVersion] = useState(0);
 
   const targetPoints = useMemo(() => {
-    const radius = sizeRef.current ? getRadius(sizeRef.current) : 0;
+    const radius = sizeRef.current ? getRadius(sizeRef.current) : getRadius(320);
     return getPoints(scores, radius);
   }, [scores]);
 
@@ -292,7 +295,8 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
         x: point.x + (endPoints[index].x - point.x) * eased,
         y: point.y + (endPoints[index].y - point.y) * eased,
       }));
-      drawRadar(ctx, sizeRef.current, scores, current, goodColorRef.current, badColorRef.current, iconImages);
+      const size = sizeRef.current || 320;
+      drawRadar(ctx, size, scores, current, goodColorRef.current, badColorRef.current, iconImages);
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {

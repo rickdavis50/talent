@@ -21,7 +21,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
   onLabelChange,
 }) => {
   return (
-    <div className="group rounded-2xl border border-[var(--color-border)]/60 bg-[var(--color-panel)]/40 px-4 py-4 transition hover:border-[var(--color-accent)]/40">
+    <div className="group px-4 py-5">
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="min-w-0 flex-1">

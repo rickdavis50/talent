@@ -1,7 +1,6 @@
 import React from 'react';
 
 import AppButton from './AppButton';
-import carrot from '../assets/carrot.svg';
 
 type CategoryAccordionProps = {
   id: string;
@@ -51,14 +50,6 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         onDrop(id);
       } : undefined}
     >
-      <img
-        src={carrot}
-        alt=""
-        className={`absolute left-0 top-0 h-4 w-4 -translate-x-1 -translate-y-1 opacity-70 transition-transform ${
-          open ? 'rotate-90' : 'rotate-0'
-        }`}
-        aria-hidden="true"
-      />
       <AppButton
         type="button"
         variant="ghost"
@@ -147,7 +138,7 @@ const CategoryAccordion: React.FC<CategoryAccordionProps> = ({
         aria-labelledby={`${id}-header`}
       >
         <div className="overflow-hidden px-5 pb-5 pt-1">
-          <div className="grid gap-4">{children}</div>
+          <div className="grid divide-y divide-[#1d1d1d]">{children}</div>
         </div>
       </div>
     </div>

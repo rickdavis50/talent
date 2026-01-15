@@ -403,7 +403,7 @@ const App = () => {
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
           <div className="order-2 lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
             <div className="w-full max-w-[600px] font-sans lg:pr-2">
-              <div className="grid divide-y divide-[var(--color-border)]/60">
+              <div className="grid divide-y divide-[#2a2a2a]">
                 {categoryOrder.map((id) => {
                   const category = categoryMap.get(id);
                   if (!category) return null;
@@ -459,7 +459,7 @@ const App = () => {
           </div>
 
           <div className="order-1 lg:order-2 lg:sticky lg:top-8 lg:pl-8">
-            <div className="border-y-2 border-[var(--color-border)] py-6">
+            <div className="py-6">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-xs uppercase text-[var(--color-muted)]">Overall</div>
@@ -590,7 +590,7 @@ const App = () => {
       >
         <div className="grid gap-4">
           <label className="grid gap-2 text-xs text-[var(--color-muted)]">
-            Founder name
+            Name
             <input
               data-autofocus
               autoFocus

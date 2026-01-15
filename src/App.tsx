@@ -28,9 +28,9 @@ const defaultAnswers = categories.reduce<Record<string, number>>((acc, category)
 const initialState: AssessmentState = {
   step: 'welcome',
   founder: {
-    name: '',
-    company: '',
-    assessmentName: '',
+    name: 'Taryn Tree',
+    company: 'Terra Talent',
+    assessmentName: 'Top Performer Goal Setting',
   },
   answers: defaultAnswers,
   labels: {},
@@ -631,11 +631,6 @@ const App = () => {
           <div className="print-meta">
             <div>{state.founder.name ? `Name: ${state.founder.name}` : 'Name: —'}</div>
             <div>{state.founder.company ? `Company: ${state.founder.company}` : 'Company: —'}</div>
-            <div>
-              {state.founder.assessmentName
-                ? `Assessment: ${state.founder.assessmentName}`
-                : 'Assessment: —'}
-            </div>
             <div>{`Date: ${new Date().toLocaleDateString()}`}</div>
           </div>
         </div>

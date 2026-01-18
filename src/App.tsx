@@ -899,9 +899,9 @@ const App = () => {
                       <div className="print-question-helper">{question.helper}</div>
                     </div>
                     <div className="print-question-score">
-                      <span className="print-accent">Individual {questionValue}</span>
+                      <span className="print-accent">{questionValue}</span>
                       <span className="print-warning" style={{ marginLeft: 12 }}>
-                        Manager {managerValue}
+                        {managerValue}
                       </span>
                     </div>
                   </div>

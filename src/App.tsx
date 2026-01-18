@@ -823,14 +823,28 @@ const App = () => {
 
         <div className="print-card">
           <div className="print-kicker">Overall score</div>
-          <div className="print-score">{summary.overall}</div>
+          <div className="print-score">
+            <span>Individual {individualSummary.overall}</span>
+            <span className="print-warning" style={{ marginLeft: 12 }}>
+              Manager {managerSummary.overall}
+            </span>
+          </div>
           <div className="print-grid">
-            {summary.categoryScores.map((score) => (
+            {individualSummary.categoryScores.map((score) => {
+              const managerScore =
+                managerSummary.categoryScores.find((item) => item.id === score.id)?.score ?? 0;
+              return (
               <div key={score.id} className="print-grid-row">
                 <span>{getCategoryValue(score.id, score.name, state.categoryLabels)}</span>
-                <span className="print-accent">{score.score}</span>
+                <span>
+                  <span className="print-accent">Individual {score.score}</span>
+                  <span className="print-warning" style={{ marginLeft: 12 }}>
+                    Manager {managerScore}
+                  </span>
+                </span>
               </div>
-            ))}
+            );
+            })}
           </div>
           <div className="print-insights">
             <div>
@@ -864,12 +878,18 @@ const App = () => {
                 </div>
               </div>
               <div className="print-section-score">
-                {categoryScoreMap.get(category.id) ?? 0}
+                <span className="print-accent">
+                  Individual {individualSummary.categoryScores.find((item) => item.id === category.id)?.score ?? 0}
+                </span>
+                <span className="print-warning" style={{ marginLeft: 12 }}>
+                  Manager {managerSummary.categoryScores.find((item) => item.id === category.id)?.score ?? 0}
+                </span>
               </div>
             </div>
             <div className="print-questions">
               {category.questions.map((question) => {
-                const questionValue = viewScores[question.id] ?? question.defaultValue;
+                const questionValue = resolvedIndividualScores[question.id] ?? question.defaultValue;
+                const managerValue = resolvedManagerScores[question.id] ?? question.defaultValue;
                 return (
                   <div key={question.id} className="print-question-row">
                     <div className="print-question-text">
@@ -878,7 +898,12 @@ const App = () => {
                       </div>
                       <div className="print-question-helper">{question.helper}</div>
                     </div>
-                    <div className="print-question-score">{questionValue}</div>
+                    <div className="print-question-score">
+                      <span className="print-accent">Individual {questionValue}</span>
+                      <span className="print-warning" style={{ marginLeft: 12 }}>
+                        Manager {managerValue}
+                      </span>
+                    </div>
                   </div>
                 );
               })}

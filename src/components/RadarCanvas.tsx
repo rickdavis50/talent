@@ -235,7 +235,7 @@ const drawRadar = (
       const individualPoints = pointsList[individualIndex] ?? [];
       const managerPoints = pointsList[managerIndex] ?? [];
       const threshold = 8;
-      const halfSpan = axisStep * 0.22;
+      const halfSpan = axisStep * 0.16;
       const markerSize = 4;
       labelScores.forEach((_score, index) => {
         const individualScore = datasets[individualIndex]?.scores[index]?.score;
@@ -256,14 +256,32 @@ const drawRadar = (
         const startAngle = angle - halfSpan;
         const endAngle = angle + halfSpan;
         const color = delta >= 0 ? colors.danger : colors.accent;
+        const midRadius = (rMin + rMax) / 2;
+        const edgeStart = {
+          x: Math.cos(startAngle) * midRadius,
+          y: Math.sin(startAngle) * midRadius,
+        };
+        const edgeEnd = {
+          x: Math.cos(endAngle) * midRadius,
+          y: Math.sin(endAngle) * midRadius,
+        };
+
+        ctx.save();
         ctx.beginPath();
         ctx.moveTo(Math.cos(startAngle) * rMin, Math.sin(startAngle) * rMin);
         ctx.lineTo(Math.cos(startAngle) * rMax, Math.sin(startAngle) * rMax);
         ctx.lineTo(Math.cos(endAngle) * rMax, Math.sin(endAngle) * rMax);
         ctx.lineTo(Math.cos(endAngle) * rMin, Math.sin(endAngle) * rMin);
         ctx.closePath();
-        ctx.fillStyle = withAlpha(color, 0.65);
-        ctx.fill();
+        ctx.clip();
+
+        const gradient = ctx.createLinearGradient(edgeStart.x, edgeStart.y, edgeEnd.x, edgeEnd.y);
+        gradient.addColorStop(0, withAlpha(color, 0));
+        gradient.addColorStop(0.5, withAlpha(color, 0.6));
+        gradient.addColorStop(1, withAlpha(color, 0));
+        ctx.fillStyle = gradient;
+        ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
+        ctx.restore();
 
         const markerRadius = rMax;
         const markerX = Math.cos(angle) * markerRadius;

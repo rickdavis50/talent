@@ -82,13 +82,15 @@ const drawRadarSeries = (
   scores: CategoryScore[],
   points: { x: number; y: number }[],
   tone: RadarSeries['tone'],
-  colors: { accent: string; danger: string; muted: string }
+  colors: { accent: string; danger: string; muted: string },
+  forceOriginal: boolean
 ) => {
   if (!points.length) return;
   const radius = getRadius(size);
   const isManager = tone === 'manager';
-  const strokeColor = isManager ? colors.accent : withAlpha(colors.muted, 0.85);
-  const fillColor = isManager ? withAlpha(colors.accent, 0.22) : withAlpha(colors.muted, 0.08);
+  const useOriginal = forceOriginal || isManager;
+  const strokeColor = useOriginal ? colors.accent : withAlpha(colors.muted, 0.85);
+  const fillColor = useOriginal ? withAlpha(colors.accent, 0.22) : withAlpha(colors.muted, 0.08);
 
   ctx.beginPath();
   points.forEach((point, index) => {
@@ -99,7 +101,7 @@ const drawRadarSeries = (
   ctx.fillStyle = fillColor;
   ctx.fill();
 
-  if (isManager) {
+  if (useOriginal) {
     points.forEach((point, index) => {
       const score = scores[index];
       if (!score || score.score > WEAK_THRESHOLD) return;
@@ -130,8 +132,8 @@ const drawRadarSeries = (
     });
   }
 
-  ctx.lineWidth = isManager ? 2 : 1;
-  if (isManager) {
+  ctx.lineWidth = useOriginal ? 2 : 1;
+  if (useOriginal) {
     points.forEach((point, index) => {
       const nextPoint = points[(index + 1) % points.length];
       const startScore = scores[index]?.score ?? 0;
@@ -202,7 +204,15 @@ const drawRadar = (
 
   datasets.forEach((dataset, index) => {
     const points = pointsList[index] ?? [];
-    drawRadarSeries(ctx, size, dataset.scores, points, dataset.tone, colors);
+    drawRadarSeries(
+      ctx,
+      size,
+      dataset.scores,
+      points,
+      dataset.tone,
+      colors,
+      datasets.length === 1
+    );
   });
 
   labelScores.forEach((score, index) => {

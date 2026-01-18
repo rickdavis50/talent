@@ -219,6 +219,8 @@ const drawRadar = (
     const individualIndex = datasets.findIndex((dataset) => dataset.tone === 'individual');
     const managerIndex = datasets.findIndex((dataset) => dataset.tone === 'manager');
     if (individualIndex !== -1 && managerIndex !== -1) {
+      drawGrid(0.14, 0.16);
+
       const midpointScores = labelScores.map((score, index) => {
         const individualScore = datasets[individualIndex]?.scores[index]?.score ?? 0;
         const managerScore = datasets[managerIndex]?.scores[index]?.score ?? 0;
@@ -268,8 +270,31 @@ const drawRadar = (
         ctx.fill();
       });
       ctx.restore();
-
-      drawGrid(0.14, 0.16);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.lineWidth = 1;
+      labelScores.forEach((_score, index) => {
+        const individualScore = datasets[individualIndex]?.scores[index]?.score;
+        const managerScore = datasets[managerIndex]?.scores[index]?.score;
+        if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return;
+        const absDelta = Math.abs(managerScore - individualScore);
+        if (absDelta < threshold) return;
+        const innerPoint = individualPoints[index];
+        const outerPoint = managerPoints[index];
+        if (!innerPoint || !outerPoint) return;
+        const rInner = Math.min(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
+        const rOuter = Math.max(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
+        if (rOuter <= rInner) return;
+        const angle = -Math.PI / 2 + index * axisStep;
+        const startAngle = angle - halfSpan;
+        const endAngle = angle + halfSpan;
+        ctx.beginPath();
+        ctx.arc(0, 0, rOuter, startAngle, endAngle);
+        ctx.arc(0, 0, rInner, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.stroke();
+      });
+      ctx.restore();
     } else {
       drawGrid(0.1, 0.2);
       datasets.forEach((dataset, index) => {

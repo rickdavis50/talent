@@ -83,24 +83,14 @@ const drawRadarSeries = (
   points: { x: number; y: number }[],
   tone: RadarSeries['tone'],
   colors: { accent: string; danger: string; muted: string },
-  forceOriginal: boolean,
-  quietMode: boolean
+  forceOriginal: boolean
 ) => {
   if (!points.length) return;
   const radius = getRadius(size);
   const isManager = tone === 'manager';
   const useOriginal = forceOriginal || isManager;
-  const baseColor = isManager ? colors.accent : colors.muted;
-  const strokeColor = quietMode
-    ? withAlpha(baseColor, 0.65)
-    : useOriginal
-      ? colors.accent
-      : withAlpha(colors.muted, 0.85);
-  const fillColor = quietMode
-    ? withAlpha(baseColor, 0.04)
-    : useOriginal
-      ? withAlpha(colors.accent, 0.22)
-      : withAlpha(colors.muted, 0.08);
+  const strokeColor = useOriginal ? colors.accent : withAlpha(colors.muted, 0.85);
+  const fillColor = useOriginal ? withAlpha(colors.accent, 0.22) : withAlpha(colors.muted, 0.08);
 
   ctx.beginPath();
   points.forEach((point, index) => {
@@ -111,7 +101,7 @@ const drawRadarSeries = (
   ctx.fillStyle = fillColor;
   ctx.fill();
 
-  if (useOriginal && !quietMode) {
+  if (useOriginal) {
     points.forEach((point, index) => {
       const score = scores[index];
       if (!score || score.score > WEAK_THRESHOLD) return;
@@ -142,8 +132,8 @@ const drawRadarSeries = (
     });
   }
 
-  ctx.lineWidth = quietMode ? 1 : useOriginal ? 2 : 1;
-  if (useOriginal && !quietMode) {
+  ctx.lineWidth = useOriginal ? 2 : 1;
+  if (useOriginal) {
     points.forEach((point, index) => {
       const nextPoint = points[(index + 1) % points.length];
       const startScore = scores[index]?.score ?? 0;
@@ -219,82 +209,66 @@ const drawRadar = (
     const individualIndex = datasets.findIndex((dataset) => dataset.tone === 'individual');
     const managerIndex = datasets.findIndex((dataset) => dataset.tone === 'manager');
     if (individualIndex !== -1 && managerIndex !== -1) {
-      drawGrid(0.14, 0.16);
-
-      const midpointScores = labelScores.map((score, index) => {
-        const individualScore = datasets[individualIndex]?.scores[index]?.score ?? 0;
-        const managerScore = datasets[managerIndex]?.scores[index]?.score ?? 0;
-        return { ...score, score: (individualScore + managerScore) / 2 };
-      });
-      const midpointPoints = getPoints(midpointScores, radius);
-
-      ctx.beginPath();
-      midpointPoints.forEach((point, index) => {
-        if (index === 0) ctx.moveTo(point.x, point.y);
-        else ctx.lineTo(point.x, point.y);
-      });
-      ctx.closePath();
-      ctx.fillStyle = withAlpha(colors.accent, 0.06);
-      ctx.fill();
-      ctx.strokeStyle = withAlpha(colors.accent, 0.65);
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
+      drawGrid(0.12, 0.16);
 
       const axisStep = (Math.PI * 2) / labelScores.length;
-      const bandAngle = axisStep * 0.55;
-      const halfSpan = bandAngle / 2;
-      const threshold = 10;
-      const individualPoints = pointsList[individualIndex] ?? [];
-      const managerPoints = pointsList[managerIndex] ?? [];
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-out';
-      labelScores.forEach((_score, index) => {
+      const threshold = 12;
+      const range = 25;
+      const weights = labelScores.map((_score, index) => {
         const individualScore = datasets[individualIndex]?.scores[index]?.score;
         const managerScore = datasets[managerIndex]?.scores[index]?.score;
-        if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return;
-        const absDelta = Math.abs(managerScore - individualScore);
-        if (absDelta < threshold) return;
-        const innerPoint = individualPoints[index];
-        const outerPoint = managerPoints[index];
-        if (!innerPoint || !outerPoint) return;
-        const rInner = Math.min(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
-        const rOuter = Math.max(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
-        if (rOuter <= rInner) return;
-        const angle = -Math.PI / 2 + index * axisStep;
-        const startAngle = angle - halfSpan;
-        const endAngle = angle + halfSpan;
+        if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return 0;
+        const diff = Math.abs(managerScore - individualScore);
+        if (diff < threshold) return 0;
+        return Math.min((diff - threshold) / range, 1);
+      });
+      const smoothedWeights = weights.map((value, index) => {
+        const prev = weights[(index - 1 + weights.length) % weights.length];
+        const next = weights[(index + 1) % weights.length];
+        return Math.max(value, prev * 0.35, next * 0.35);
+      });
+      const hasRibbon = smoothedWeights.some((value) => value > 0);
+      if (hasRibbon) {
+        const outerRadii = smoothedWeights.map((weight, index) => {
+          const individualScore = datasets[individualIndex]?.scores[index]?.score ?? 0;
+          const managerScore = datasets[managerIndex]?.scores[index]?.score ?? 0;
+          const maxValue = Math.max(individualScore, managerScore);
+          return (maxValue * weight) / 100;
+        });
+        const innerRadii = smoothedWeights.map((weight, index) => {
+          const individualScore = datasets[individualIndex]?.scores[index]?.score ?? 0;
+          const managerScore = datasets[managerIndex]?.scores[index]?.score ?? 0;
+          const minValue = Math.min(individualScore, managerScore);
+          return (minValue * weight) / 100;
+        });
+
+        const outerPoints = outerRadii.map((value, index) => {
+          const angle = -Math.PI / 2 + index * axisStep;
+          const r = radius * value;
+          return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+        });
+        const innerPoints = innerRadii.map((value, index) => {
+          const angle = -Math.PI / 2 + index * axisStep;
+          const r = radius * value;
+          return { x: Math.cos(angle) * r, y: Math.sin(angle) * r };
+        });
+
         ctx.beginPath();
-        ctx.arc(0, 0, rOuter, startAngle, endAngle);
-        ctx.arc(0, 0, rInner, endAngle, startAngle, true);
+        outerPoints.forEach((point, index) => {
+          if (index === 0) ctx.moveTo(point.x, point.y);
+          else ctx.lineTo(point.x, point.y);
+        });
+        for (let index = innerPoints.length - 1; index >= 0; index -= 1) {
+          const point = innerPoints[index];
+          ctx.lineTo(point.x, point.y);
+        }
         ctx.closePath();
+        ctx.fillStyle = withAlpha(colors.danger, 0.5);
         ctx.fill();
-      });
-      ctx.restore();
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-      ctx.lineWidth = 1;
-      labelScores.forEach((_score, index) => {
-        const individualScore = datasets[individualIndex]?.scores[index]?.score;
-        const managerScore = datasets[managerIndex]?.scores[index]?.score;
-        if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return;
-        const absDelta = Math.abs(managerScore - individualScore);
-        if (absDelta < threshold) return;
-        const innerPoint = individualPoints[index];
-        const outerPoint = managerPoints[index];
-        if (!innerPoint || !outerPoint) return;
-        const rInner = Math.min(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
-        const rOuter = Math.max(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
-        if (rOuter <= rInner) return;
-        const angle = -Math.PI / 2 + index * axisStep;
-        const startAngle = angle - halfSpan;
-        const endAngle = angle + halfSpan;
-        ctx.beginPath();
-        ctx.arc(0, 0, rOuter, startAngle, endAngle);
-        ctx.arc(0, 0, rInner, endAngle, startAngle, true);
-        ctx.closePath();
+        ctx.strokeStyle = withAlpha(colors.danger, 0.9);
+        ctx.lineWidth = 1;
         ctx.stroke();
-      });
-      ctx.restore();
+      }
     } else {
       drawGrid(0.1, 0.2);
       datasets.forEach((dataset, index) => {
@@ -306,8 +280,7 @@ const drawRadar = (
           points,
           dataset.tone,
           colors,
-          datasets.length === 1,
-          false
+          datasets.length === 1
         );
       });
     }
@@ -322,8 +295,7 @@ const drawRadar = (
         points,
         dataset.tone,
         colors,
-        datasets.length === 1,
-        false
+        datasets.length === 1
       );
     });
   }

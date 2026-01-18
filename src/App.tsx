@@ -846,24 +846,6 @@ const App = () => {
             );
             })}
           </div>
-          <div className="print-insights">
-            <div>
-              Strengths:{' '}
-              <span className="print-accent">
-                {summary.strengths
-                  .map((s) => getCategoryValue(s.id, s.name, state.categoryLabels))
-                  .join(', ')}
-              </span>
-            </div>
-            <div>
-              Gaps:{' '}
-              <span className="print-warning">
-                {summary.gaps
-                  .map((g) => getCategoryValue(g.id, g.name, state.categoryLabels))
-                  .join(', ')}
-              </span>
-            </div>
-          </div>
         </div>
 
         {categories.map((category) => (

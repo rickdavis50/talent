@@ -286,6 +286,7 @@ const App = () => {
     [state.scores.manager]
   );
   const combinedEnabled = individualHasEdits || managerHasEdits;
+  const gapThreshold = 8;
 
   const largestGap = useMemo<{
     id: string;
@@ -302,6 +303,7 @@ const App = () => {
         if (typeof individual !== 'number' || typeof manager !== 'number') return acc;
         const delta = manager - individual;
         const abs = Math.abs(delta);
+        if (abs < gapThreshold) return acc;
         if (!acc || abs > acc.abs) {
           return { id: category.id, delta, abs };
         }
@@ -309,14 +311,14 @@ const App = () => {
       },
       null
     );
-    if (!best || best.abs === 0) return null;
+    if (!best) return null;
     return {
       id: best.id,
       delta: best.delta,
       abs: best.abs,
       higherLabel: best.delta > 0 ? 'Manager' : 'Individual',
     };
-  }, [categories, individualSummary, managerSummary]);
+  }, [categories, individualSummary, managerSummary, gapThreshold]);
 
   useEffect(() => {
     if (!combinedEnabled && viewMode === 'combined') {
@@ -658,17 +660,23 @@ const App = () => {
                 <RadarCanvas scores={radarDatasets[0].scores} datasets={radarDatasets} />
               </div>
 
-              {viewMode === 'combined' && largestGap ? (
+              {viewMode === 'combined' ? (
                 <div className="mt-3 text-xs text-[var(--color-muted)]">
-                  Largest perception gap:{' '}
-                  <span className="text-[var(--color-text)]">
-                    {getCategoryValue(
-                      largestGap.id,
-                      categoryMap.get(largestGap.id)?.name ?? largestGap.id,
-                      state.categoryLabels
-                    )}{' '}
-                    ({largestGap.higherLabel} +{Math.round(largestGap.abs)})
-                  </span>
+                  {largestGap ? (
+                    <>
+                      Largest perception gap:{' '}
+                      <span className="text-[var(--color-text)]">
+                        {getCategoryValue(
+                          largestGap.id,
+                          categoryMap.get(largestGap.id)?.name ?? largestGap.id,
+                          state.categoryLabels
+                        )}{' '}
+                        ({largestGap.higherLabel} +{Math.round(largestGap.abs)})
+                      </span>
+                    </>
+                  ) : (
+                    'Perception is closely aligned across categories.'
+                  )}
                 </div>
               ) : null}
 

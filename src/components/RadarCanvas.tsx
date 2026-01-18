@@ -83,14 +83,24 @@ const drawRadarSeries = (
   points: { x: number; y: number }[],
   tone: RadarSeries['tone'],
   colors: { accent: string; danger: string; muted: string },
-  forceOriginal: boolean
+  forceOriginal: boolean,
+  quietMode: boolean
 ) => {
   if (!points.length) return;
   const radius = getRadius(size);
   const isManager = tone === 'manager';
   const useOriginal = forceOriginal || isManager;
-  const strokeColor = useOriginal ? colors.accent : withAlpha(colors.muted, 0.85);
-  const fillColor = useOriginal ? withAlpha(colors.accent, 0.22) : withAlpha(colors.muted, 0.08);
+  const baseColor = isManager ? colors.accent : colors.muted;
+  const strokeColor = quietMode
+    ? withAlpha(baseColor, 0.65)
+    : useOriginal
+      ? colors.accent
+      : withAlpha(colors.muted, 0.85);
+  const fillColor = quietMode
+    ? withAlpha(baseColor, 0.04)
+    : useOriginal
+      ? withAlpha(colors.accent, 0.22)
+      : withAlpha(colors.muted, 0.08);
 
   ctx.beginPath();
   points.forEach((point, index) => {
@@ -101,7 +111,7 @@ const drawRadarSeries = (
   ctx.fillStyle = fillColor;
   ctx.fill();
 
-  if (useOriginal) {
+  if (useOriginal && !quietMode) {
     points.forEach((point, index) => {
       const score = scores[index];
       if (!score || score.score > WEAK_THRESHOLD) return;
@@ -132,8 +142,8 @@ const drawRadarSeries = (
     });
   }
 
-  ctx.lineWidth = useOriginal ? 2 : 1;
-  if (useOriginal) {
+  ctx.lineWidth = quietMode ? 1 : useOriginal ? 2 : 1;
+  if (useOriginal && !quietMode) {
     points.forEach((point, index) => {
       const nextPoint = points[(index + 1) % points.length];
       const startScore = scores[index]?.score ?? 0;
@@ -172,12 +182,13 @@ const drawRadar = (
 ) => {
   const center = size / 2;
   const radius = getRadius(size);
+  const isCombined = datasets.length > 1;
 
   ctx.clearRect(0, 0, size, size);
   ctx.save();
   ctx.translate(center, center);
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.strokeStyle = isCombined ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 1;
   RING_LEVELS.forEach((level) => {
     ctx.beginPath();
@@ -193,7 +204,7 @@ const drawRadar = (
     ctx.stroke();
   });
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.strokeStyle = isCombined ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.2)';
   labelScores.forEach((_score, index) => {
     const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
     ctx.beginPath();
@@ -211,9 +222,59 @@ const drawRadar = (
       points,
       dataset.tone,
       colors,
-      datasets.length === 1
+      datasets.length === 1,
+      isCombined
     );
   });
+
+  if (isCombined && pointsList.length >= 2) {
+    const axisStep = (Math.PI * 2) / labelScores.length;
+    const individualIndex = datasets.findIndex((dataset) => dataset.tone === 'individual');
+    const managerIndex = datasets.findIndex((dataset) => dataset.tone === 'manager');
+    if (individualIndex !== -1 && managerIndex !== -1) {
+      const individualPoints = pointsList[individualIndex] ?? [];
+      const managerPoints = pointsList[managerIndex] ?? [];
+      const threshold = 8;
+      const halfSpan = axisStep * 0.22;
+      const markerSize = 4;
+      labelScores.forEach((_score, index) => {
+        const individualScore = datasets[individualIndex]?.scores[index]?.score;
+        const managerScore = datasets[managerIndex]?.scores[index]?.score;
+        if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return;
+        const delta = managerScore - individualScore;
+        const absDelta = Math.abs(delta);
+        if (absDelta < threshold) return;
+        const inner = individualPoints[index];
+        const outer = managerPoints[index];
+        if (!inner || !outer) return;
+        const rInner = Math.hypot(inner.x, inner.y);
+        const rOuter = Math.hypot(outer.x, outer.y);
+        const rMin = Math.min(rInner, rOuter);
+        const rMax = Math.max(rInner, rOuter);
+        if (rMax <= rMin) return;
+        const angle = -Math.PI / 2 + index * axisStep;
+        const startAngle = angle - halfSpan;
+        const endAngle = angle + halfSpan;
+        const color = delta >= 0 ? colors.danger : colors.accent;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(startAngle) * rMin, Math.sin(startAngle) * rMin);
+        ctx.lineTo(Math.cos(startAngle) * rMax, Math.sin(startAngle) * rMax);
+        ctx.lineTo(Math.cos(endAngle) * rMax, Math.sin(endAngle) * rMax);
+        ctx.lineTo(Math.cos(endAngle) * rMin, Math.sin(endAngle) * rMin);
+        ctx.closePath();
+        ctx.fillStyle = withAlpha(color, 0.65);
+        ctx.fill();
+
+        const markerRadius = rMax;
+        const markerX = Math.cos(angle) * markerRadius;
+        const markerY = Math.sin(angle) * markerRadius;
+        ctx.beginPath();
+        ctx.fillStyle = withAlpha(color, 0.95);
+        ctx.arc(markerX, markerY, markerSize, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+  }
 
   labelScores.forEach((score, index) => {
     const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;

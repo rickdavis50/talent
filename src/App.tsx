@@ -5,10 +5,17 @@ import iconFinance from './assets/icon_finance.svg';
 import iconGoToMarket from './assets/icon_go_to_market.svg';
 import iconLeadership from './assets/icon_leadership.svg';
 import iconProduct from './assets/icon_product.svg';
-import { AssessmentState, FounderInfo } from './types';
+import { AssessmentState, FounderInfo, Perspective, Scores } from './types';
 import { computeScores } from './lib/scoring';
 import { decodeStateFromQuery } from './lib/share';
 import { clearState, loadState, saveState } from './lib/storage';
+import {
+  buildCombinedScores,
+  buildDefaultScores,
+  hasAnyEdits,
+  isPerspectiveComplete,
+  resolveScores,
+} from './lib/scores';
 import RadarCanvas from './components/RadarCanvas';
 import SliderRow from './components/SliderRow';
 import CategoryAccordion from './components/CategoryAccordion';
@@ -17,13 +24,13 @@ import BottomSheet from './components/BottomSheet';
 import Modal from './components/Modal';
 import Toast from './components/Toast';
 import AppButton from './components/AppButton';
+import { Tabs, TabsList, TabsTrigger } from './components/ui/tabs';
 
-const defaultAnswers = categories.reduce<Record<string, number>>((acc, category) => {
-  category.questions.forEach((question) => {
-    acc[question.id] = question.defaultValue;
-  });
-  return acc;
-}, {});
+const defaultScores = buildDefaultScores(categories);
+const createFreshScores = () => ({
+  individual: { ...defaultScores },
+  manager: { ...defaultScores },
+});
 
 const initialState: AssessmentState = {
   step: 'welcome',
@@ -32,7 +39,7 @@ const initialState: AssessmentState = {
     company: 'Terra Talent',
     assessmentName: 'Top Performer Goal Setting',
   },
-  answers: defaultAnswers,
+  scores: createFreshScores(),
   labels: {},
   categoryLabels: {},
   categoryDescriptions: {},
@@ -42,7 +49,7 @@ const initialState: AssessmentState = {
 type Action =
   | { type: 'SET_FOUNDER'; payload: Partial<FounderInfo> }
   | { type: 'SET_STEP'; payload: AssessmentState['step'] }
-  | { type: 'SET_ANSWER'; payload: { id: string; value: number } }
+  | { type: 'SET_SCORE'; payload: { perspective: Perspective; id: string; value: number } }
   | { type: 'SET_LABEL'; payload: { id: string; value: string } }
   | { type: 'SET_CATEGORY_LABEL'; payload: { id: string; value: string } }
   | { type: 'SET_CATEGORY_DESCRIPTION'; payload: { id: string; value: string } }
@@ -60,11 +67,19 @@ const reducer = (state: AssessmentState, action: Action): AssessmentState => {
       return { ...state, founder: { ...state.founder, ...action.payload } };
     case 'SET_STEP':
       return { ...state, step: action.payload };
-    case 'SET_ANSWER':
+    case 'SET_SCORE': {
+      const currentScores = state.scores[action.payload.perspective];
       return {
         ...state,
-        answers: { ...state.answers, [action.payload.id]: action.payload.value },
+        scores: {
+          ...state.scores,
+          [action.payload.perspective]: {
+            ...currentScores,
+            [action.payload.id]: action.payload.value,
+          },
+        },
       };
+    }
     case 'SET_LABEL':
       return {
         ...state,
@@ -85,7 +100,7 @@ const reducer = (state: AssessmentState, action: Action): AssessmentState => {
     case 'RESET_SCORES': {
       return {
         ...state,
-        answers: defaultAnswers,
+        scores: createFreshScores(),
         editMode: false,
       };
     }
@@ -101,7 +116,7 @@ const reducer = (state: AssessmentState, action: Action): AssessmentState => {
     case 'RESET_ALL': {
       return {
         ...state,
-        answers: defaultAnswers,
+        scores: createFreshScores(),
         labels: {},
         categoryLabels: {},
         categoryDescriptions: {},
@@ -129,16 +144,31 @@ const getCategoryValue = (id: string, fallback: string, overrides: Record<string
   return override && override.trim().length > 0 ? override : fallback;
 };
 
-const sanitizeIncomingState = (incoming: Partial<AssessmentState>): Partial<AssessmentState> => {
-  const sanitizedAnswers: Record<string, number> = { ...defaultAnswers };
-  if (incoming.answers) {
-    Object.keys(sanitizedAnswers).forEach((key) => {
-      const value = incoming.answers?.[key];
+const sanitizeScores = (incomingScores?: Scores): Scores => {
+  const sanitized: Scores = { ...defaultScores };
+  if (incomingScores) {
+    Object.keys(sanitized).forEach((key) => {
+      const value = incomingScores?.[key];
       if (typeof value === 'number') {
-        sanitizedAnswers[key] = clamp(value, 0, 5);
+        sanitized[key] = clamp(value, 0, 5);
       }
     });
   }
+  return sanitized;
+};
+
+const sanitizeIncomingState = (
+  incoming: Partial<AssessmentState> & { answers?: Record<string, number> }
+): Partial<AssessmentState> => {
+  const sanitizedScores = incoming.scores
+    ? {
+        individual: sanitizeScores(incoming.scores.individual),
+        manager: sanitizeScores(incoming.scores.manager),
+      }
+    : {
+        individual: sanitizeScores(incoming.answers),
+        manager: sanitizeScores(),
+      };
 
   const sanitizedLabels: Record<string, string> = {};
   if (incoming.labels) {
@@ -170,13 +200,15 @@ const sanitizeIncomingState = (incoming: Partial<AssessmentState>): Partial<Asse
   return {
     step: 'assessment',
     founder,
-    answers: sanitizedAnswers,
+    scores: sanitizedScores,
     labels: sanitizedLabels,
     categoryLabels: sanitizedCategoryLabels,
     categoryDescriptions: sanitizedCategoryDescriptions,
     editMode: false,
   };
 };
+
+type ViewMode = Perspective | 'combined';
 
 const App = () => {
   const [state, dispatch] = useReducer(reducer, initialState);
@@ -186,6 +218,7 @@ const App = () => {
   const [showReset, setShowReset] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('individual');
   const [categoryOrder, setCategoryOrder] = useState<string[]>(() =>
     categories.map((category) => category.id)
   );
@@ -206,7 +239,90 @@ const App = () => {
     []
   );
 
-  const summary = useMemo(() => computeScores(categories, state.answers), [state.answers]);
+  const resolvedIndividualScores = useMemo(
+    () => resolveScores(state.scores.individual, defaultScores),
+    [state.scores.individual]
+  );
+  const resolvedManagerScores = useMemo(
+    () => resolveScores(state.scores.manager, defaultScores),
+    [state.scores.manager]
+  );
+  const combinedScores = useMemo(
+    () => buildCombinedScores(resolvedIndividualScores, resolvedManagerScores, defaultScores),
+    [resolvedIndividualScores, resolvedManagerScores]
+  );
+
+  const individualSummary = useMemo(
+    () => computeScores(categories, resolvedIndividualScores),
+    [resolvedIndividualScores]
+  );
+  const managerSummary = useMemo(
+    () => computeScores(categories, resolvedManagerScores),
+    [resolvedManagerScores]
+  );
+  const combinedSummary = useMemo(
+    () => computeScores(categories, combinedScores),
+    [combinedScores]
+  );
+  const summary =
+    viewMode === 'combined' ? combinedSummary : viewMode === 'manager' ? managerSummary : individualSummary;
+  const viewScores =
+    viewMode === 'combined' ? combinedScores : viewMode === 'manager' ? resolvedManagerScores : resolvedIndividualScores;
+
+  const individualComplete = useMemo(
+    () => isPerspectiveComplete(categories, state.scores.individual, defaultScores),
+    [state.scores.individual]
+  );
+  const managerComplete = useMemo(
+    () => isPerspectiveComplete(categories, state.scores.manager, defaultScores),
+    [state.scores.manager]
+  );
+  const individualHasEdits = useMemo(
+    () => hasAnyEdits(categories, state.scores.individual, defaultScores),
+    [state.scores.individual]
+  );
+  const managerHasEdits = useMemo(
+    () => hasAnyEdits(categories, state.scores.manager, defaultScores),
+    [state.scores.manager]
+  );
+  const combinedEnabled = individualHasEdits || managerHasEdits;
+
+  const largestGap = useMemo<{
+    id: string;
+    delta: number;
+    abs: number;
+    higherLabel: 'Individual' | 'Manager';
+  } | null>(() => {
+    const individualMap = new Map(individualSummary.categoryScores.map((score) => [score.id, score.score]));
+    const managerMap = new Map(managerSummary.categoryScores.map((score) => [score.id, score.score]));
+    const best = categories.reduce<{ id: string; delta: number; abs: number } | null>(
+      (acc, category) => {
+        const individual = individualMap.get(category.id);
+        const manager = managerMap.get(category.id);
+        if (typeof individual !== 'number' || typeof manager !== 'number') return acc;
+        const delta = manager - individual;
+        const abs = Math.abs(delta);
+        if (!acc || abs > acc.abs) {
+          return { id: category.id, delta, abs };
+        }
+        return acc;
+      },
+      null
+    );
+    if (!best || best.abs === 0) return null;
+    return {
+      id: best.id,
+      delta: best.delta,
+      abs: best.abs,
+      higherLabel: best.delta > 0 ? 'Manager' : 'Individual',
+    };
+  }, [categories, individualSummary, managerSummary]);
+
+  useEffect(() => {
+    if (!combinedEnabled && viewMode === 'combined') {
+      setViewMode('individual');
+    }
+  }, [combinedEnabled, viewMode]);
   const categoryMap = useMemo(
     () => new Map(categories.map((category) => [category.id, category])),
     []
@@ -231,7 +347,7 @@ const App = () => {
 
     const stored = loadState();
     if (stored) {
-      dispatch({ type: 'HYDRATE', payload: stored });
+      dispatch({ type: 'HYDRATE', payload: sanitizeIncomingState(stored) });
     }
   }, []);
 
@@ -313,6 +429,47 @@ const App = () => {
   const usedTitles = useMemo(() => {
     return categories.map((category) => resolveCategoryTitle(category.id, category.name));
   }, [state.categoryLabels, titleOptions]);
+
+  const individualIndicator = individualComplete ? '●' : '○';
+  const managerIndicator = managerComplete ? '●' : '○';
+
+  const individualRadarScores = useMemo(
+    () =>
+      individualSummary.categoryScores.map((score) => {
+        const resolvedTitle = resolveCategoryTitle(score.id, score.name);
+        return {
+          ...score,
+          name: resolvedTitle,
+          iconSrc: getCategoryIcon(resolvedTitle),
+        };
+      }),
+    [individualSummary.categoryScores, state.categoryLabels, titleOptions, categoryIconMap]
+  );
+
+  const managerRadarScores = useMemo(
+    () =>
+      managerSummary.categoryScores.map((score) => {
+        const resolvedTitle = resolveCategoryTitle(score.id, score.name);
+        return {
+          ...score,
+          name: resolvedTitle,
+          iconSrc: getCategoryIcon(resolvedTitle),
+        };
+      }),
+    [managerSummary.categoryScores, state.categoryLabels, titleOptions, categoryIconMap]
+  );
+
+  const radarDatasets = useMemo(() => {
+    if (viewMode === 'combined') {
+      return [
+        { id: 'individual', scores: individualRadarScores, tone: 'individual' as const },
+        { id: 'manager', scores: managerRadarScores, tone: 'manager' as const },
+      ];
+    }
+    const tone: 'manager' | 'individual' = viewMode === 'manager' ? 'manager' : 'individual';
+    const scores = viewMode === 'manager' ? managerRadarScores : individualRadarScores;
+    return [{ id: tone, scores, tone }];
+  }, [viewMode, individualRadarScores, managerRadarScores]);
 
 
   if (state.step === 'welcome') {
@@ -400,6 +557,22 @@ const App = () => {
           onProfile={() => setShowProfile(true)}
         />
 
+        <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as ViewMode)}>
+          <TabsList>
+            <TabsTrigger value="individual">
+              Individual
+              <span className="text-[10px] text-[var(--color-muted)]">{individualIndicator}</span>
+            </TabsTrigger>
+            <TabsTrigger value="manager">
+              Manager
+              <span className="text-[10px] text-[var(--color-muted)]">{managerIndicator}</span>
+            </TabsTrigger>
+            <TabsTrigger value="combined" disabled={!combinedEnabled}>
+              Combined
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="grid gap-8 lg:grid-cols-[1.3fr_0.7fr] lg:gap-0">
           <div className="order-2 lg:order-1 lg:border-r-2 lg:border-[var(--color-border)] lg:pr-8">
             <div className="w-full max-w-[600px] font-sans lg:pr-2">
@@ -441,14 +614,22 @@ const App = () => {
                           id={question.id}
                           label={getLabel(question.id, question.label, state.labels)}
                           helper={question.helper}
-                          value={state.answers[question.id] ?? question.defaultValue}
+                          value={viewScores[question.id] ?? question.defaultValue}
                           onChange={(value) =>
-                            dispatch({ type: 'SET_ANSWER', payload: { id: question.id, value } })
+                            dispatch({
+                              type: 'SET_SCORE',
+                              payload: {
+                                perspective: viewMode === 'manager' ? 'manager' : 'individual',
+                                id: question.id,
+                                value,
+                              },
+                            })
                           }
                           editMode={state.editMode}
                           onLabelChange={(value) =>
                             dispatch({ type: 'SET_LABEL', payload: { id: question.id, value } })
                           }
+                          disabled={viewMode === 'combined'}
                         />
                       ))}
                     </CategoryAccordion>
@@ -474,17 +655,22 @@ const App = () => {
               </div>
 
               <div className="mt-6">
-                <RadarCanvas
-                  scores={summary.categoryScores.map((score) => {
-                    const resolvedTitle = resolveCategoryTitle(score.id, score.name);
-                    return {
-                      ...score,
-                      name: resolvedTitle,
-                      iconSrc: getCategoryIcon(resolvedTitle),
-                    };
-                  })}
-                />
+                <RadarCanvas scores={radarDatasets[0].scores} datasets={radarDatasets} />
               </div>
+
+              {viewMode === 'combined' && largestGap ? (
+                <div className="mt-3 text-xs text-[var(--color-muted)]">
+                  Largest perception gap:{' '}
+                  <span className="text-[var(--color-text)]">
+                    {getCategoryValue(
+                      largestGap.id,
+                      categoryMap.get(largestGap.id)?.name ?? largestGap.id,
+                      state.categoryLabels
+                    )}{' '}
+                    ({largestGap.higherLabel} +{Math.round(largestGap.abs)})
+                  </span>
+                </div>
+              ) : null}
 
               <div className="mt-5 grid gap-2 text-sm">
                 {summary.categoryScores.map((score) => (
@@ -683,7 +869,7 @@ const App = () => {
             </div>
             <div className="print-questions">
               {category.questions.map((question) => {
-                const questionValue = state.answers[question.id] ?? question.defaultValue;
+                const questionValue = viewScores[question.id] ?? question.defaultValue;
                 return (
                   <div key={question.id} className="print-question-row">
                     <div className="print-question-text">

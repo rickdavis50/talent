@@ -10,6 +10,7 @@ type SliderRowProps = {
   onChange: (value: number) => void;
   editMode: boolean;
   onLabelChange: (value: string) => void;
+  disabled?: boolean;
 };
 
 const SliderRow: React.FC<SliderRowProps> = ({
@@ -19,9 +20,10 @@ const SliderRow: React.FC<SliderRowProps> = ({
   onChange,
   editMode,
   onLabelChange,
+  disabled,
 }) => {
   return (
-    <div className="group px-4 py-5">
+    <div className={`group px-4 py-5 ${disabled ? 'opacity-70' : ''}`}>
       <div className="flex items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-3">
           <div className="min-w-0 flex-1">
@@ -74,6 +76,7 @@ const SliderRow: React.FC<SliderRowProps> = ({
           onChange={(nextValue) => onChange(nextValue as number)}
           ariaLabel={label}
           className="relative z-10 w-full signal-slider"
+          disabled={disabled}
         />
       </div>
     </div>

@@ -14,7 +14,7 @@ const base64UrlDecode = (input: string) => {
 export const encodeStateToQuery = (state: AssessmentState) => {
   const payload = {
     founder: state.founder,
-    answers: state.answers,
+    scores: state.scores,
     labels: state.labels,
     categoryLabels: state.categoryLabels,
     categoryDescriptions: state.categoryDescriptions,

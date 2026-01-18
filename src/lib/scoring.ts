@@ -1,8 +1,8 @@
-import { Category, ScoreSummary } from '../types';
+import { Category, ScoreSummary, Scores } from '../types';
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-export const computeScores = (categories: Category[], answers: Record<string, number>): ScoreSummary => {
+export const computeScores = (categories: Category[], answers: Scores): ScoreSummary => {
   const categoryScores = categories.map((category) => {
     const total = category.questions.reduce(
       (sum, question) => sum + clamp(answers[question.id] ?? 0, 0, 5),

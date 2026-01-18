@@ -4,8 +4,15 @@ import { CategoryScore } from '../types';
 const RING_LEVELS = [20, 40, 60, 80, 100];
 const WEAK_THRESHOLD = 75;
 
+type RadarSeries = {
+  id: string;
+  scores: CategoryScore[];
+  tone: 'individual' | 'manager';
+};
+
 type RadarCanvasProps = {
   scores: CategoryScore[];
+  datasets?: RadarSeries[];
 };
 
 const getPoints = (scores: CategoryScore[], radius: number) => {
@@ -69,59 +76,30 @@ const withAlpha = (color: string, alpha: number) => {
   return `rgba(255, 227, 162, ${alpha})`;
 };
 
-const drawRadar = (
+const drawRadarSeries = (
   ctx: CanvasRenderingContext2D,
   size: number,
   scores: CategoryScore[],
   points: { x: number; y: number }[],
-  goodColor: string,
-  badColor: string,
-  iconImages: Array<HTMLImageElement | undefined>
+  tone: RadarSeries['tone'],
+  colors: { accent: string; danger: string; muted: string }
 ) => {
-  const center = size / 2;
+  if (!points.length) return;
   const radius = getRadius(size);
+  const isManager = tone === 'manager';
+  const strokeColor = isManager ? colors.accent : withAlpha(colors.muted, 0.85);
+  const fillColor = isManager ? withAlpha(colors.accent, 0.22) : withAlpha(colors.muted, 0.08);
 
-  ctx.clearRect(0, 0, size, size);
-  ctx.save();
-  ctx.translate(center, center);
-
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-  ctx.lineWidth = 1;
-  RING_LEVELS.forEach((level) => {
-    ctx.beginPath();
-    const ringRadius = (radius * level) / 100;
-    scores.forEach((_score, index) => {
-      const angle = -Math.PI / 2 + (index * Math.PI * 2) / scores.length;
-      const x = Math.cos(angle) * ringRadius;
-      const y = Math.sin(angle) * ringRadius;
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.closePath();
-    ctx.stroke();
+  ctx.beginPath();
+  points.forEach((point, index) => {
+    if (index === 0) ctx.moveTo(point.x, point.y);
+    else ctx.lineTo(point.x, point.y);
   });
+  ctx.closePath();
+  ctx.fillStyle = fillColor;
+  ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-  scores.forEach((_score, index) => {
-    const angle = -Math.PI / 2 + (index * Math.PI * 2) / scores.length;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-    ctx.stroke();
-  });
-
-  if (points.length) {
-    ctx.beginPath();
-    points.forEach((point, index) => {
-      if (index === 0) ctx.moveTo(point.x, point.y);
-      else ctx.lineTo(point.x, point.y);
-    });
-    ctx.closePath();
-    ctx.fillStyle = withAlpha(goodColor, 0.22);
-    ctx.fill();
-  }
-
-  if (points.length) {
+  if (isManager) {
     points.forEach((point, index) => {
       const score = scores[index];
       if (!score || score.score > WEAK_THRESHOLD) return;
@@ -144,22 +122,22 @@ const drawRadar = (
       ctx.closePath();
       ctx.clip();
       const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, radius);
-      gradient.addColorStop(0, withAlpha(badColor, 0));
-      gradient.addColorStop(1, withAlpha(badColor, 0.25));
+      gradient.addColorStop(0, withAlpha(colors.danger, 0));
+      gradient.addColorStop(1, withAlpha(colors.danger, 0.25));
       ctx.fillStyle = gradient;
       ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
       ctx.restore();
     });
   }
 
-  if (points.length) {
-    ctx.lineWidth = 2;
+  ctx.lineWidth = isManager ? 2 : 1;
+  if (isManager) {
     points.forEach((point, index) => {
       const nextPoint = points[(index + 1) % points.length];
       const startScore = scores[index]?.score ?? 0;
       const endScore = scores[(index + 1) % scores.length]?.score ?? 0;
-      const startColor = startScore > WEAK_THRESHOLD ? goodColor : badColor;
-      const endColor = endScore > WEAK_THRESHOLD ? goodColor : badColor;
+      const startColor = startScore > WEAK_THRESHOLD ? colors.accent : colors.danger;
+      const endColor = endScore > WEAK_THRESHOLD ? colors.accent : colors.danger;
       const gradient = ctx.createLinearGradient(point.x, point.y, nextPoint.x, nextPoint.y);
       gradient.addColorStop(0, startColor);
       gradient.addColorStop(1, endColor);
@@ -169,10 +147,66 @@ const drawRadar = (
       ctx.lineTo(nextPoint.x, nextPoint.y);
       ctx.stroke();
     });
+  } else {
+    ctx.strokeStyle = strokeColor;
+    ctx.beginPath();
+    points.forEach((point, index) => {
+      if (index === 0) ctx.moveTo(point.x, point.y);
+      else ctx.lineTo(point.x, point.y);
+    });
+    ctx.closePath();
+    ctx.stroke();
   }
+};
 
-  scores.forEach((score, index) => {
-    const angle = -Math.PI / 2 + (index * Math.PI * 2) / scores.length;
+const drawRadar = (
+  ctx: CanvasRenderingContext2D,
+  size: number,
+  labelScores: CategoryScore[],
+  datasets: RadarSeries[],
+  pointsList: Array<{ x: number; y: number }[]>,
+  colors: { accent: string; danger: string; muted: string },
+  iconImages: Array<HTMLImageElement | undefined>
+) => {
+  const center = size / 2;
+  const radius = getRadius(size);
+
+  ctx.clearRect(0, 0, size, size);
+  ctx.save();
+  ctx.translate(center, center);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  RING_LEVELS.forEach((level) => {
+    ctx.beginPath();
+    const ringRadius = (radius * level) / 100;
+    labelScores.forEach((_score, index) => {
+      const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
+      const x = Math.cos(angle) * ringRadius;
+      const y = Math.sin(angle) * ringRadius;
+      if (index === 0) ctx.moveTo(x, y);
+      else ctx.lineTo(x, y);
+    });
+    ctx.closePath();
+    ctx.stroke();
+  });
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  labelScores.forEach((_score, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+    ctx.stroke();
+  });
+
+  datasets.forEach((dataset, index) => {
+    const points = pointsList[index] ?? [];
+    drawRadarSeries(ctx, size, dataset.scores, points, dataset.tone, colors);
+  });
+
+  labelScores.forEach((score, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
     const labelRadius = radius + 14;
     const x = Math.cos(angle) * labelRadius;
     const y = Math.sin(angle) * labelRadius;
@@ -204,24 +238,32 @@ const drawRadar = (
   ctx.restore();
 };
 
-const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
+const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores, datasets }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sizeRef = useRef(0);
   const animationRef = useRef<number | null>(null);
-  const previousPoints = useRef<{ x: number; y: number }[]>([]);
+  const previousPoints = useRef<Array<{ x: number; y: number }[]>>([]);
   const goodColorRef = useRef('#ffe3a2');
   const badColorRef = useRef('#ed0f94');
+  const mutedColorRef = useRef('#a1a1a1');
   const iconCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [iconVersion, setIconVersion] = useState(0);
 
+  const resolvedDatasets = useMemo(() => {
+    if (datasets && datasets.length) return datasets;
+    return [{ id: 'primary', scores, tone: 'manager' as const }];
+  }, [datasets, scores]);
+
+  const labelScores = resolvedDatasets[0]?.scores ?? scores;
+
   const targetPoints = useMemo(() => {
     const radius = sizeRef.current ? getRadius(sizeRef.current) : getRadius(320);
-    return getPoints(scores, radius);
-  }, [scores]);
+    return resolvedDatasets.map((dataset) => getPoints(dataset.scores, radius));
+  }, [resolvedDatasets]);
 
   const iconImages = useMemo(
     () =>
-      scores.map((score) => {
+      labelScores.map((score) => {
         if (!score.iconSrc) return undefined;
         const cached = iconCache.current.get(score.iconSrc);
         if (cached) return cached;
@@ -231,7 +273,7 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
         iconCache.current.set(score.iconSrc, image);
         return image;
       }),
-    [scores, iconVersion]
+    [labelScores, iconVersion]
   );
 
   useEffect(() => {
@@ -254,14 +296,17 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const radius = getRadius(size);
-      const points = getPoints(scores, radius);
-      previousPoints.current = points;
+      const pointsList = resolvedDatasets.map((dataset) => getPoints(dataset.scores, radius));
+      previousPoints.current = pointsList;
       const computed = getComputedStyle(document.documentElement);
-      const good = computed.getPropertyValue('--color-accent').trim() || '#ffe3a2';
-      const bad = computed.getPropertyValue('--color-danger').trim() || '#ed0f94';
-      goodColorRef.current = good;
-      badColorRef.current = bad;
-      drawRadar(ctx, size, scores, points, goodColorRef.current, badColorRef.current, iconImages);
+      goodColorRef.current = computed.getPropertyValue('--color-accent').trim() || '#ffe3a2';
+      badColorRef.current = computed.getPropertyValue('--color-danger').trim() || '#ed0f94';
+      mutedColorRef.current = computed.getPropertyValue('--color-muted').trim() || '#a1a1a1';
+      drawRadar(ctx, size, labelScores, resolvedDatasets, pointsList, {
+        accent: goodColorRef.current,
+        danger: badColorRef.current,
+        muted: mutedColorRef.current,
+      }, iconImages);
     };
 
     resize();
@@ -272,7 +317,7 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
       cancelAnimationFrame(frame);
       observer.disconnect();
     };
-  }, [scores, iconImages]);
+  }, [resolvedDatasets, labelScores, iconImages]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -280,9 +325,10 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const startPoints = previousPoints.current.length
-      ? previousPoints.current
-      : targetPoints;
+    const startPoints =
+      previousPoints.current.length === targetPoints.length
+        ? previousPoints.current
+        : targetPoints;
     const endPoints = targetPoints;
 
     const start = performance.now();
@@ -291,12 +337,22 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
     const animate = (now: number) => {
       const progress = Math.min((now - start) / duration, 1);
       const eased = progress * (2 - progress);
-      const current = startPoints.map((point, index) => ({
-        x: point.x + (endPoints[index].x - point.x) * eased,
-        y: point.y + (endPoints[index].y - point.y) * eased,
-      }));
+      const currentPoints = endPoints.map((seriesPoints, seriesIndex) => {
+        const startSeries = startPoints[seriesIndex] ?? seriesPoints;
+        return seriesPoints.map((point, index) => {
+          const startPoint = startSeries[index] ?? point;
+          return {
+            x: startPoint.x + (point.x - startPoint.x) * eased,
+            y: startPoint.y + (point.y - startPoint.y) * eased,
+          };
+        });
+      });
       const size = sizeRef.current || 320;
-      drawRadar(ctx, size, scores, current, goodColorRef.current, badColorRef.current, iconImages);
+      drawRadar(ctx, size, labelScores, resolvedDatasets, currentPoints, {
+        accent: goodColorRef.current,
+        danger: badColorRef.current,
+        muted: mutedColorRef.current,
+      }, iconImages);
       if (progress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       } else {
@@ -310,7 +366,7 @@ const RadarCanvas: React.FC<RadarCanvasProps> = ({ scores }) => {
     return () => {
       if (animationRef.current) cancelAnimationFrame(animationRef.current);
     };
-  }, [scores, targetPoints, iconImages]);
+  }, [targetPoints, labelScores, resolvedDatasets, iconImages]);
 
   return (
     <div className="relative w-full aspect-square">

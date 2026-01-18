@@ -1,12 +1,12 @@
-import { AssessmentState } from '../types';
+import { AssessmentState, LegacyAssessmentState } from '../types';
 
 const STORAGE_KEY = 'talent-assessment-v1';
 
-export const loadState = (): AssessmentState | null => {
+export const loadState = (): AssessmentState | LegacyAssessmentState | null => {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
-    return JSON.parse(raw) as AssessmentState;
+    return JSON.parse(raw) as AssessmentState | LegacyAssessmentState;
   } catch (error) {
     console.warn('Failed to load state', error);
     return null;

@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/dual-eval-modes
   workflow_dispatch:
 
 permissions:

@@ -286,7 +286,7 @@ const App = () => {
     [state.scores.manager]
   );
   const combinedEnabled = individualHasEdits || managerHasEdits;
-  const gapThreshold = 8;
+  const gapThreshold = 10;
 
   const largestGap = useMemo<{
     id: string;

@@ -188,110 +188,119 @@ const drawRadar = (
   ctx.save();
   ctx.translate(center, center);
 
-  ctx.strokeStyle = isCombined ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.1)';
-  ctx.lineWidth = 1;
-  RING_LEVELS.forEach((level) => {
-    ctx.beginPath();
-    const ringRadius = (radius * level) / 100;
+  const drawGrid = (ringOpacity: number, axisOpacity: number) => {
+    ctx.strokeStyle = `rgba(255, 255, 255, ${ringOpacity})`;
+    ctx.lineWidth = 1;
+    RING_LEVELS.forEach((level) => {
+      ctx.beginPath();
+      const ringRadius = (radius * level) / 100;
+      labelScores.forEach((_score, index) => {
+        const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
+        const x = Math.cos(angle) * ringRadius;
+        const y = Math.sin(angle) * ringRadius;
+        if (index === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+      ctx.stroke();
+    });
+
+    ctx.strokeStyle = `rgba(255, 255, 255, ${axisOpacity})`;
     labelScores.forEach((_score, index) => {
       const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
-      const x = Math.cos(angle) * ringRadius;
-      const y = Math.sin(angle) * ringRadius;
-      if (index === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+      ctx.stroke();
     });
-    ctx.closePath();
-    ctx.stroke();
-  });
+  };
 
-  ctx.strokeStyle = isCombined ? 'rgba(255, 255, 255, 0.18)' : 'rgba(255, 255, 255, 0.2)';
-  labelScores.forEach((_score, index) => {
-    const angle = -Math.PI / 2 + (index * Math.PI * 2) / labelScores.length;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
-    ctx.stroke();
-  });
-
-  datasets.forEach((dataset, index) => {
-    const points = pointsList[index] ?? [];
-    drawRadarSeries(
-      ctx,
-      size,
-      dataset.scores,
-      points,
-      dataset.tone,
-      colors,
-      datasets.length === 1,
-      isCombined
-    );
-  });
-
-  if (isCombined && pointsList.length >= 2) {
-    const axisStep = (Math.PI * 2) / labelScores.length;
+  if (isCombined) {
     const individualIndex = datasets.findIndex((dataset) => dataset.tone === 'individual');
     const managerIndex = datasets.findIndex((dataset) => dataset.tone === 'manager');
     if (individualIndex !== -1 && managerIndex !== -1) {
+      const midpointScores = labelScores.map((score, index) => {
+        const individualScore = datasets[individualIndex]?.scores[index]?.score ?? 0;
+        const managerScore = datasets[managerIndex]?.scores[index]?.score ?? 0;
+        return { ...score, score: (individualScore + managerScore) / 2 };
+      });
+      const midpointPoints = getPoints(midpointScores, radius);
+
+      ctx.beginPath();
+      midpointPoints.forEach((point, index) => {
+        if (index === 0) ctx.moveTo(point.x, point.y);
+        else ctx.lineTo(point.x, point.y);
+      });
+      ctx.closePath();
+      ctx.fillStyle = withAlpha(colors.accent, 0.06);
+      ctx.fill();
+      ctx.strokeStyle = withAlpha(colors.accent, 0.65);
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      const axisStep = (Math.PI * 2) / labelScores.length;
+      const bandAngle = axisStep * 0.55;
+      const halfSpan = bandAngle / 2;
+      const threshold = 10;
       const individualPoints = pointsList[individualIndex] ?? [];
       const managerPoints = pointsList[managerIndex] ?? [];
-      const threshold = 8;
-      const halfSpan = axisStep * 0.16;
-      const markerSize = 4;
+      ctx.save();
+      ctx.globalCompositeOperation = 'destination-out';
       labelScores.forEach((_score, index) => {
         const individualScore = datasets[individualIndex]?.scores[index]?.score;
         const managerScore = datasets[managerIndex]?.scores[index]?.score;
         if (typeof individualScore !== 'number' || typeof managerScore !== 'number') return;
-        const delta = managerScore - individualScore;
-        const absDelta = Math.abs(delta);
+        const absDelta = Math.abs(managerScore - individualScore);
         if (absDelta < threshold) return;
-        const inner = individualPoints[index];
-        const outer = managerPoints[index];
-        if (!inner || !outer) return;
-        const rInner = Math.hypot(inner.x, inner.y);
-        const rOuter = Math.hypot(outer.x, outer.y);
-        const rMin = Math.min(rInner, rOuter);
-        const rMax = Math.max(rInner, rOuter);
-        if (rMax <= rMin) return;
+        const innerPoint = individualPoints[index];
+        const outerPoint = managerPoints[index];
+        if (!innerPoint || !outerPoint) return;
+        const rInner = Math.min(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
+        const rOuter = Math.max(Math.hypot(innerPoint.x, innerPoint.y), Math.hypot(outerPoint.x, outerPoint.y));
+        if (rOuter <= rInner) return;
         const angle = -Math.PI / 2 + index * axisStep;
         const startAngle = angle - halfSpan;
         const endAngle = angle + halfSpan;
-        const color = delta >= 0 ? colors.danger : colors.accent;
-        const midRadius = (rMin + rMax) / 2;
-        const edgeStart = {
-          x: Math.cos(startAngle) * midRadius,
-          y: Math.sin(startAngle) * midRadius,
-        };
-        const edgeEnd = {
-          x: Math.cos(endAngle) * midRadius,
-          y: Math.sin(endAngle) * midRadius,
-        };
-
-        ctx.save();
         ctx.beginPath();
-        ctx.moveTo(Math.cos(startAngle) * rMin, Math.sin(startAngle) * rMin);
-        ctx.lineTo(Math.cos(startAngle) * rMax, Math.sin(startAngle) * rMax);
-        ctx.lineTo(Math.cos(endAngle) * rMax, Math.sin(endAngle) * rMax);
-        ctx.lineTo(Math.cos(endAngle) * rMin, Math.sin(endAngle) * rMin);
+        ctx.arc(0, 0, rOuter, startAngle, endAngle);
+        ctx.arc(0, 0, rInner, endAngle, startAngle, true);
         ctx.closePath();
-        ctx.clip();
-
-        const gradient = ctx.createLinearGradient(edgeStart.x, edgeStart.y, edgeEnd.x, edgeEnd.y);
-        gradient.addColorStop(0, withAlpha(color, 0));
-        gradient.addColorStop(0.5, withAlpha(color, 0.6));
-        gradient.addColorStop(1, withAlpha(color, 0));
-        ctx.fillStyle = gradient;
-        ctx.fillRect(-radius, -radius, radius * 2, radius * 2);
-        ctx.restore();
-
-        const markerRadius = rMax;
-        const markerX = Math.cos(angle) * markerRadius;
-        const markerY = Math.sin(angle) * markerRadius;
-        ctx.beginPath();
-        ctx.fillStyle = withAlpha(color, 0.95);
-        ctx.arc(markerX, markerY, markerSize, 0, Math.PI * 2);
         ctx.fill();
       });
+      ctx.restore();
+
+      drawGrid(0.14, 0.16);
+    } else {
+      drawGrid(0.1, 0.2);
+      datasets.forEach((dataset, index) => {
+        const points = pointsList[index] ?? [];
+        drawRadarSeries(
+          ctx,
+          size,
+          dataset.scores,
+          points,
+          dataset.tone,
+          colors,
+          datasets.length === 1,
+          false
+        );
+      });
     }
+  } else {
+    drawGrid(0.1, 0.2);
+    datasets.forEach((dataset, index) => {
+      const points = pointsList[index] ?? [];
+      drawRadarSeries(
+        ctx,
+        size,
+        dataset.scores,
+        points,
+        dataset.tone,
+        colors,
+        datasets.length === 1,
+        false
+      );
+    });
   }
 
   labelScores.forEach((score, index) => {
